@@ -1,0 +1,402 @@
+:root {
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --ink: #1d252f;
+  --muted: #66727f;
+  --line: #d9dee5;
+  --accent: #0e7c86;
+  --accent-dark: #075a62;
+  --warn: #9c6510;
+  --soft: #e8f3f4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.app-shell {
+  padding: 24px;
+}
+
+.workspace {
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 6px 0 18px;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.topbar p {
+  margin-top: 6px;
+  color: var(--muted);
+  max-width: 720px;
+}
+
+.actions,
+.resistance-section header,
+.tab-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+button {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  padding: 9px 14px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  color: #a4adb7;
+  cursor: not-allowed;
+}
+
+#exportResults,
+.tab-button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.control-band,
+.resistance-section,
+.status-strip,
+.plot-section,
+.tabs {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.control-band {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) 1fr;
+  gap: 22px;
+  padding: 18px;
+}
+
+.file-drop {
+  min-height: 156px;
+  border: 1px dashed #9aacb8;
+  border-radius: 8px;
+  background: var(--soft);
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 18px;
+  position: relative;
+}
+
+.file-drop.dragover {
+  border-color: var(--accent-dark);
+  background: #d7ecee;
+}
+
+.file-drop input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.file-drop span {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.input-with-unit {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  background: white;
+}
+
+.input-with-unit input {
+  width: 100%;
+  border: 0;
+  padding: 10px;
+  min-width: 0;
+}
+
+.input-with-unit span {
+  padding: 0 10px;
+  color: var(--muted);
+  border-left: 1px solid var(--line);
+}
+
+.resistance-section {
+  margin-top: 14px;
+  padding: 16px 18px;
+}
+
+.resistance-section header {
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.resistance-section h2 {
+  font-size: 16px;
+}
+
+.resistance-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.status-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 14px;
+  overflow: hidden;
+}
+
+.status-strip div {
+  padding: 14px 18px;
+  border-right: 1px solid var(--line);
+}
+
+.status-strip div:last-child {
+  border-right: 0;
+}
+
+.status-strip span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status-strip strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 20px;
+}
+
+.plot-section {
+  margin-top: 14px;
+  padding: 16px 18px;
+}
+
+.plot-section header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.plot-section h2 {
+  font-size: 16px;
+}
+
+.plot-section header span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.plot-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plot-mode.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.chart-frame {
+  width: 100%;
+  height: 420px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fbfcfd;
+}
+
+#ditChart {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.plot-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 260px;
+}
+
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+
+.tabs {
+  margin-top: 14px;
+  overflow: hidden;
+}
+
+.tab-buttons {
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.table-wrap {
+  max-height: 520px;
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--line);
+  padding: 10px 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: #f2f5f7;
+  color: #33404c;
+  font-size: 12px;
+  text-transform: uppercase;
+  z-index: 1;
+}
+
+th:first-child,
+td:first-child {
+  text-align: left;
+}
+
+tbody tr:hover {
+  background: #f8fbfb;
+}
+
+.empty-row td {
+  color: var(--muted);
+  text-align: left;
+}
+
+.warning {
+  color: var(--warn);
+}
+
+@media (max-width: 860px) {
+  .app-shell {
+    padding: 14px;
+  }
+
+  .topbar,
+  .control-band {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .inputs-grid,
+  .resistance-list,
+  .status-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .plot-section header {
+    align-items: flex-start;
+    display: grid;
+  }
+
+  .status-strip div {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .status-strip div:last-child {
+    border-bottom: 0;
+  }
+}

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DIT Ion Migration Calculator</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <h1>DIT Ion Migration Calculator</h1>
+            <p>Upload a DIT text file and calculate mobile ion concentration, conductivity, and mobility.</p>
+          </div>
+          <div class="actions">
+            <button id="loadSample" type="button" title="Load the workbook sample file">Sample</button>
+            <button id="exportResults" type="button" title="Download the result table as CSV" disabled>Export results</button>
+          </div>
+        </header>
+
+        <section class="control-band">
+          <div class="file-drop" id="dropZone">
+            <input id="fileInput" type="file" accept=".txt,.tsv,.csv,text/plain" multiple>
+            <div>
+              <strong>Choose or drop DIT data</strong>
+              <span id="fileName">No files selected</span>
+            </div>
+          </div>
+
+          <div class="inputs-grid">
+            <label>
+              Thickness
+              <span class="input-with-unit">
+                <input id="thickness" type="number" step="any" value="5.5e-7">
+                <span>m</span>
+              </span>
+            </label>
+            <label>
+              Area
+              <span class="input-with-unit">
+                <input id="area" type="number" step="any" value="9e-6">
+                <span>m²</span>
+              </span>
+            </label>
+            <label>
+              Preload bias
+              <span class="input-with-unit">
+                <input id="preloadBias" type="number" step="any" value="0.8">
+                <span>V</span>
+              </span>
+            </label>
+            <label>
+              Built-in potential
+              <span class="input-with-unit">
+                <input id="builtInPotential" type="number" step="any" value="1.2">
+                <span>V</span>
+              </span>
+            </label>
+            <label>
+              Thermal voltage
+              <span class="input-with-unit">
+                <input id="thermalVoltage" type="number" step="any" value="0.026">
+                <span>V</span>
+              </span>
+            </label>
+            <label>
+              Relative permittivity
+              <span class="input-with-unit">
+                <input id="relativePermittivity" type="number" step="any" value="24.2">
+                <span>εr</span>
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <section class="resistance-section">
+          <header>
+            <h2>Ionic resistances</h2>
+            <button id="addResistance" type="button" title="Add another resistance input">+</button>
+          </header>
+          <div id="resistanceList" class="resistance-list"></div>
+        </section>
+
+        <section class="status-strip">
+          <div>
+            <span>Measurements</span>
+            <strong id="measurementCount">0</strong>
+          </div>
+          <div>
+            <span>Processed points</span>
+            <strong id="pointCount">0</strong>
+          </div>
+          <div>
+            <span>Bias bracket</span>
+            <strong id="biasBracket">--</strong>
+          </div>
+        </section>
+
+        <section class="plot-section" aria-label="DIT plot">
+          <header>
+            <div>
+              <h2>DIT plot</h2>
+              <span id="plotSummary">No data loaded</span>
+            </div>
+            <div class="plot-controls" role="group" aria-label="Plot data source">
+              <button class="plot-mode active" type="button" data-plot="processed">Processed</button>
+              <button class="plot-mode" type="button" data-plot="raw">Raw</button>
+            </div>
+          </header>
+          <div class="chart-frame">
+            <canvas id="ditChart" width="1200" height="420"></canvas>
+          </div>
+          <div id="plotLegend" class="plot-legend"></div>
+        </section>
+
+        <section class="tabs" aria-label="Calculator output">
+          <div class="tab-buttons">
+            <button class="tab-button active" type="button" data-tab="results">Results</button>
+            <button class="tab-button" type="button" data-tab="processed">Processed DIT</button>
+            <button class="tab-button" type="button" data-tab="raw">Raw DIT</button>
+          </div>
+
+          <div class="tab-panel active" id="resultsPanel">
+            <div class="table-wrap">
+              <table id="resultsTable">
+                <thead>
+                  <tr>
+                    <th>Device ID</th>
+                    <th>Source file</th>
+                    <th>Conductivity (S/m)</th>
+                    <th>Concentration (cm⁻³)</th>
+                    <th>Mobility (cm²/V/s)</th>
+                    <th>Data points</th>
+                    <th>Charge (C)</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="processedPanel">
+            <div class="table-wrap">
+              <table id="processedTable"></table>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="rawPanel">
+            <div class="table-wrap">
+              <table id="rawTable"></table>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
