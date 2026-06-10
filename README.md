@@ -6,12 +6,15 @@ The calculator runs entirely in the browser. Uploaded files are parsed locally b
 
 ## Features
 
-- Drag and drop one or more `.txt` DIT files
-- Calculate mobile ion concentration
-- Optionally calculate conductivity and mobility from ionic resistance inputs
-- Plot raw and processed DIT traces
+- Drag and drop one or more `.txt`, `.csv`, or `.tsv` DIT files
+- Inspect detected delimiter, rows, columns, units, and selected time/current columns
+- Calculate integrated ionic charge, areal charge density, mobile ion concentration, conductivity, and mobility
+- Adjust baseline mode, integration bounds, spike exclusion, and smoothing
+- Plot raw and processed DIT traces with the integrated region marked
+- Review data-quality warnings and assumption sensitivity
 - Preview raw and processed data tables
-- Export the result table to CSV
+- Export CSV summaries, JSON reproducibility reports, and PNG plots
+- Run an in-browser synthetic validation sample with known integrated charge
 
 ## Use
 
@@ -24,6 +27,12 @@ Quick-start PDF: [`docs/DIT_Calculator_Quick_Start.pdf`](docs/DIT_Calculator_Qui
 3. Add ionic resistance values if conductivity and mobility are needed.
 4. Review the DIT plot and result table.
 5. Export results as CSV when needed.
+
+## Local validation
+
+```bash
+npm test
+```
 
 ## Notes
 

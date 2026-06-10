@@ -11,18 +11,57 @@
       <section class="workspace">
         <header class="topbar">
           <div>
-            <h1>DIT Ion Migration Calculator</h1>
-            <p>Upload a DIT text file and calculate mobile ion concentration, conductivity, and mobility.</p>
+            <div class="title-row">
+              <h1>DIT Ion Migration Calculator</h1>
+              <span id="versionTag" class="version-tag">v0.1 public-beta</span>
+            </div>
+            <p>Calculate mobile-ion properties from transient photocurrent/current relaxation data.</p>
           </div>
           <div class="actions">
-            <button id="loadSample" type="button" title="Load the workbook sample file">Sample</button>
-            <button id="exportResults" type="button" title="Download the result table as CSV" disabled>Export results</button>
+            <button id="loadExperimentalSample" type="button">Experimental sample</button>
+            <button id="loadSyntheticSample" type="button">Synthetic validation</button>
           </div>
         </header>
 
+        <section class="workflow" aria-label="Calculation workflow">
+          <div><strong>1</strong><span>Upload and inspect data</span></div>
+          <div><strong>2</strong><span>Select processing and integration window</span></div>
+          <div><strong>3</strong><span>Calculate, validate, and export results</span></div>
+        </section>
+
+        <details class="method-panel">
+          <summary>Method and Assumptions</summary>
+          <div class="method-grid">
+            <div>
+              <h2>Calculation chain</h2>
+              <p>Transient current data -> baseline correction -> pulse/window selection -> ionic current component -> integrated ionic charge -> areal charge density -> mobile ion concentration -> conductivity -> mobility -> exportable report.</p>
+              <h2>Implemented equations</h2>
+              <ul>
+                <li><code>Q_ion = integral[t1,t2] (I(t) - I_baseline(t)) dt</code></li>
+                <li><code>Q_A = Q_ion / A</code></li>
+                <li><code>F_bias = sqrt(1 + 16 V_bi / V_T) - sqrt(1 + 16 (V_bi - V_pre) / V_T)</code></li>
+                <li><code>N0 = 8 (Q_ion / (A F_bias))^2 / (q eps0 epsr V_T)</code></li>
+                <li><code>sigma_ion = L / (A R_ion)</code></li>
+                <li><code>mu_ion = sigma_ion / (q N0)</code></li>
+                <li><code>V_T = k_B T / q</code></li>
+              </ul>
+            </div>
+            <div>
+              <h2>Assumptions and limitations</h2>
+              <ul>
+                <li>The concentration expression preserves the validated Excel-model form currently implemented in the calculator.</li>
+                <li>Results depend strongly on baseline choice, integration window, active area, thermal voltage, permittivity, and ionic resistance.</li>
+                <li>The tool estimates effective mobile-ion characteristics; it does not uniquely identify a microscopic ionic species.</li>
+                <li>Electronic spikes should be excluded from the ionic integration window.</li>
+                <li>Severe shunts, unstable baselines, or incorrect units can invalidate the estimate.</li>
+              </ul>
+            </div>
+          </div>
+        </details>
+
         <section class="control-band">
           <div class="file-drop" id="dropZone">
-            <input id="fileInput" type="file" accept=".txt,.tsv,.csv,text/plain" multiple>
+            <input id="fileInput" type="file" accept=".txt,.csv,.tsv,text/plain,text/csv" multiple aria-label="Upload DIT files">
             <div>
               <strong>Choose or drop DIT data</strong>
               <span id="fileName">No files selected</span>
@@ -30,57 +69,186 @@
           </div>
 
           <div class="inputs-grid">
-            <label>
-              Thickness
-              <span class="input-with-unit">
-                <input id="thickness" type="number" step="any" value="5.5e-7">
-                <span>m</span>
+            <label title="Perovskite absorber thickness used in charge-to-concentration conversion.">
+              Perovskite thickness
+              <span class="compound-input">
+                <input id="thickness" type="number" step="any" value="550">
+                <select id="thicknessUnit" aria-label="Thickness unit">
+                  <option value="nm" selected>nm</option>
+                  <option value="um">um</option>
+                  <option value="cm">cm</option>
+                  <option value="m">m</option>
+                </select>
               </span>
             </label>
-            <label>
-              Area
-              <span class="input-with-unit">
-                <input id="area" type="number" step="any" value="9e-6">
-                <span>m²</span>
+            <label title="Active device area, not substrate area.">
+              Active area
+              <span class="compound-input">
+                <input id="area" type="number" step="any" value="0.09">
+                <select id="areaUnit" aria-label="Area unit">
+                  <option value="cm2" selected>cm^2</option>
+                  <option value="mm2">mm^2</option>
+                  <option value="m2">m^2</option>
+                </select>
               </span>
             </label>
-            <label>
-              Preload bias
+            <label title="Voltage applied before or during the transient measurement.">
+              Preload / pulse bias
               <span class="input-with-unit">
                 <input id="preloadBias" type="number" step="any" value="0.8">
                 <span>V</span>
               </span>
             </label>
-            <label>
+            <label title="Approximate internal built-in potential used in the bias correction.">
               Built-in potential
               <span class="input-with-unit">
                 <input id="builtInPotential" type="number" step="any" value="1.2">
                 <span>V</span>
               </span>
             </label>
-            <label>
-              Thermal voltage
-              <span class="input-with-unit">
-                <input id="thermalVoltage" type="number" step="any" value="0.026">
-                <span>V</span>
+            <label title="Used to calculate thermal voltage kBT/q.">
+              Temperature
+              <span class="compound-input">
+                <input id="temperature" type="number" step="any" value="300">
+                <select id="temperatureUnit" aria-label="Temperature unit">
+                  <option value="K" selected>K</option>
+                  <option value="C">deg C</option>
+                </select>
               </span>
             </label>
-            <label>
+            <label title="Effective dielectric constant of the perovskite absorber.">
               Relative permittivity
               <span class="input-with-unit">
                 <input id="relativePermittivity" type="number" step="any" value="24.2">
-                <span>εr</span>
+                <span>eps r</span>
               </span>
+            </label>
+            <label title="Calculated as kBT/q. At 300 K, approximately 0.0259 V.">
+              Thermal voltage
+              <span class="input-with-unit">
+                <input id="thermalVoltage" type="number" step="any" value="0.02585" disabled>
+                <span>V</span>
+              </span>
+            </label>
+            <label class="checkbox-row">
+              <input id="manualThermalVoltage" type="checkbox">
+              Manually override thermal voltage
+            </label>
+            <label>
+              Sample label / notes
+              <input id="sampleNotes" type="text" placeholder="Optional">
             </label>
           </div>
         </section>
 
-        <section class="resistance-section">
-          <header>
-            <h2>Ionic resistances</h2>
-            <button id="addResistance" type="button" title="Add another resistance input">+</button>
+        <section class="panel" id="dataPanel">
+          <header class="panel-header">
+            <div>
+              <h2>Step 1 - Uploaded Data</h2>
+              <p id="parseSummary">No data loaded.</p>
+            </div>
           </header>
-          <div id="resistanceList" class="resistance-list"></div>
+          <div class="settings-grid">
+            <label>
+              Time column
+              <select id="timeColumn"></select>
+            </label>
+            <label>
+              Current column
+              <select id="currentColumn"></select>
+            </label>
+            <label>
+              Time units
+              <select id="timeUnit">
+                <option value="s">s</option>
+                <option value="ms">ms</option>
+                <option value="us" selected>us</option>
+              </select>
+            </label>
+            <label>
+              Current units
+              <select id="currentUnit">
+                <option value="A">A</option>
+                <option value="mA" selected>mA</option>
+                <option value="uA">uA</option>
+              </select>
+            </label>
+            <label class="checkbox-row">
+              <input id="invertCurrent" type="checkbox" checked>
+              Invert current sign
+            </label>
+            <label class="checkbox-row">
+              <input id="showCurrentDensity" type="checkbox">
+              Show plot as current density
+            </label>
+            <label class="checkbox-row">
+              <input id="useAdjacentPairs" type="checkbox" checked>
+              Use adjacent time/current pairs when present
+            </label>
+          </div>
+          <div class="table-wrap compact">
+            <table id="previewTable"></table>
+          </div>
+        </section>
+
+        <section class="panel" id="processingPanel">
+          <header class="panel-header">
+            <div>
+              <h2>Step 2 - Processing and Integration</h2>
+              <p>Adjust the baseline and ionic integration window. The plot shows exactly what is integrated.</p>
+            </div>
+            <button id="resetProcessing" type="button">Reset processing</button>
+          </header>
+          <div class="settings-grid">
+            <label>
+              Baseline mode
+              <select id="baselineMode">
+                <option value="manual" selected>manual baseline</option>
+                <option value="pre">pre-pulse mean</option>
+                <option value="post">post-window mean</option>
+                <option value="linear">linear baseline</option>
+              </select>
+            </label>
+            <label>
+              Manual baseline
+              <span class="input-with-unit">
+                <input id="manualBaseline" type="number" step="any" value="0">
+                <span>A</span>
+              </span>
+            </label>
+            <label>
+              Integration start
+              <span class="input-with-unit">
+                <input id="integrationStart" type="number" step="any">
+                <span>s</span>
+              </span>
+            </label>
+            <label>
+              Integration end
+              <span class="input-with-unit">
+                <input id="integrationEnd" type="number" step="any">
+                <span>s</span>
+              </span>
+            </label>
+            <label>
+              Exclude fast spike
+              <span class="input-with-unit">
+                <input id="excludeSpike" type="number" step="any" value="0">
+                <span>us</span>
+              </span>
+            </label>
+            <label class="checkbox-row">
+              <input id="smoothData" type="checkbox">
+              Smooth data
+            </label>
+            <label>
+              Smoothing window
+              <span class="input-with-unit">
+                <input id="smoothWindow" type="number" min="1" step="2" value="5">
+                <span>pts</span>
+              </span>
+            </label>
+          </div>
         </section>
 
         <section class="status-strip">
@@ -92,9 +260,9 @@
             <span>Processed points</span>
             <strong id="pointCount">0</strong>
           </div>
-          <div>
-            <span>Bias bracket</span>
-            <strong id="biasBracket">--</strong>
+          <div title="Bias correction factor = sqrt(1 + 16 V_bi/V_T) - sqrt(1 + 16(V_bi - V_pre)/V_T).">
+            <span>Bias correction factor</span>
+            <strong id="biasCorrectionFactor">--</strong>
           </div>
         </section>
 
@@ -110,14 +278,96 @@
             </div>
           </header>
           <div class="chart-frame">
-            <canvas id="ditChart" width="1200" height="420"></canvas>
+            <canvas id="ditChart" width="1200" height="460"></canvas>
           </div>
           <div id="plotLegend" class="plot-legend"></div>
         </section>
 
-        <section class="tabs" aria-label="Calculator output">
+        <section class="panel">
+          <header class="panel-header">
+            <div>
+              <h2>Step 3 - Results</h2>
+              <p>Summary cards use the mean of valid measurements when more than one trace is loaded.</p>
+            </div>
+          </header>
+          <div id="resultCards" class="result-cards"></div>
+        </section>
+
+        <section class="panel checks-panel">
+          <header class="panel-header">
+            <div>
+              <h2>Data Quality / Sanity Checks</h2>
+              <p>Warnings are included in JSON exports. Critical issues block export unless explicitly allowed.</p>
+            </div>
+            <label class="checkbox-row export-warning">
+              <input id="exportWithWarnings" type="checkbox">
+              Export with critical warnings
+            </label>
+          </header>
+          <div id="warningsList" class="warnings-list"></div>
+        </section>
+
+        <section class="panel">
+          <header class="panel-header">
+            <div>
+              <h2>Assumption Sensitivity</h2>
+              <p>Deterministic +/-10% checks for key assumptions.</p>
+            </div>
+          </header>
+          <div id="sensitivityTableWrap" class="table-wrap compact">
+            <table id="sensitivityTable"></table>
+          </div>
+        </section>
+
+        <section class="resistance-section">
+          <header>
+            <h2>Ionic resistances</h2>
+            <button id="addResistance" type="button" title="Add another resistance input">+</button>
+          </header>
+          <p class="section-note">Measured or fitted ionic resistance values are used to calculate ionic conductivity and mobility.</p>
+          <div id="resistanceList" class="resistance-list"></div>
+        </section>
+
+        <section class="panel export-panel">
+          <header class="panel-header">
+            <div>
+              <h2>Export</h2>
+              <p>Exports include app version, inputs, processing settings, warnings, and results.</p>
+            </div>
+          </header>
+          <div class="actions">
+            <button id="exportCsv" type="button" disabled>CSV summary</button>
+            <button id="exportJson" type="button" disabled>JSON report</button>
+            <button id="exportPng" type="button" disabled>PNG plot</button>
+          </div>
+        </section>
+
+        <details class="method-panel docs-panel">
+          <summary>Documentation and Troubleshooting</summary>
+          <div class="method-grid">
+            <div>
+              <h2>Input data</h2>
+              <p>Use text, CSV, or TSV files with time/current columns. Files with PAIOS-style headers are supported by detecting the numeric data region after <code>### Data:</code>.</p>
+              <h2>Interpretation</h2>
+              <p>Use the processed plot to verify that the shaded region contains the slow ionic relaxation and excludes the fast electronic spike.</p>
+            </div>
+            <div>
+              <h2>Limitations</h2>
+              <ul>
+                <li>One dominant mobile ion approximation.</li>
+                <li>Results depend on identifying the ionic portion of the transient.</li>
+                <li>Active area and thickness must be accurate.</li>
+                <li>Ionic resistance must be measured or estimated independently.</li>
+                <li>Unstable baselines can invalidate the calculation.</li>
+              </ul>
+              <p>Citation/reference placeholder: add the final thesis or publication citation here before formal release.</p>
+            </div>
+          </div>
+        </details>
+
+        <section class="tabs" aria-label="Calculator tables">
           <div class="tab-buttons">
-            <button class="tab-button active" type="button" data-tab="results">Results</button>
+            <button class="tab-button active" type="button" data-tab="results">Device table</button>
             <button class="tab-button" type="button" data-tab="processed">Processed DIT</button>
             <button class="tab-button" type="button" data-tab="raw">Raw DIT</button>
           </div>
@@ -129,11 +379,14 @@
                   <tr>
                     <th>Device ID</th>
                     <th>Source file</th>
-                    <th>Conductivity (S/m)</th>
-                    <th>Concentration (cm⁻³)</th>
-                    <th>Mobility (cm²/V/s)</th>
-                    <th>Data points</th>
-                    <th>Charge (C)</th>
+                    <th>R ion (ohm)</th>
+                    <th>Q ion (C)</th>
+                    <th>Q/A (C/cm^2)</th>
+                    <th>N0 (cm^-3)</th>
+                    <th>sigma (S/cm)</th>
+                    <th>mu (cm^2/V/s)</th>
+                    <th>Window</th>
+                    <th>Warnings</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -153,9 +406,13 @@
             </div>
           </div>
         </section>
+
+        <footer>
+          Files are processed locally in the browser. No data are uploaded to a server by this static GitHub Pages deployment.
+        </footer>
       </section>
     </main>
 
-    <script src="./app.js"></script>
+    <script type="module" src="./app.js"></script>
   </body>
 </html>
