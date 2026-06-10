@@ -189,6 +189,30 @@ function updateColumnSelectors() {
   els.currentColumn.value = columns.length > 1 ? "1" : "0";
 }
 
+function applyDetectedFileHints() {
+  const hints = state.parsedFiles[0]?.unitHints;
+  if (hints?.timeUnit) els.timeUnit.value = hints.timeUnit;
+  if (hints?.currentUnit) els.currentUnit.value = hints.currentUnit;
+}
+
+function inferCurrentSignFromWindow() {
+  if (!state.parsedFiles.length) return;
+  const baseSettings = {
+    ...getProcessingSettings(),
+    invertCurrent: false,
+  };
+  const traces = buildTraces(state.parsedFiles, baseSettings);
+  if (!traces.length) return;
+  const processed = processTrace(traces[0], {
+    ...baseSettings,
+    baselineMode: "manual",
+    manualBaseline: 0,
+    integrationStart: NaN,
+    integrationEnd: NaN,
+  });
+  els.invertCurrent.checked = processed.qIonC < 0;
+}
+
 function renderPreview() {
   const first = state.parsedFiles[0];
   if (!first) {
@@ -596,6 +620,8 @@ async function loadFiles(fileList) {
   els.fileName.textContent = state.files.length === 1 ? state.files[0].name : `${state.files.length} files selected`;
   state.parsedFiles = state.files.map((file) => parseData(file.text, file.name));
   updateColumnSelectors();
+  applyDetectedFileHints();
+  inferCurrentSignFromWindow();
   recalculateSafely();
 }
 

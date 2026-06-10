@@ -15,6 +15,7 @@ The calculator runs entirely in the browser. Uploaded files are parsed locally b
 - Preview raw and processed data tables
 - Export CSV summaries, JSON reproducibility reports, and PNG plots
 - Run an in-browser synthetic validation sample with known integrated charge
+- Supports COMSOL-style time/current exports with fast electronic spikes by starting integration after the first spike and ending before a return spike when detected
 
 ## Use
 

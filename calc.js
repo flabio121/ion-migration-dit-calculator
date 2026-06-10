@@ -73,6 +73,11 @@ function numericCells(parts) {
 
 export function parseData(text, fileName = "uploaded file") {
   const allLines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  const headerText = allLines.slice(0, 30).join(" ");
+  const unitHints = {
+    timeUnit: /\bTime\s*\(\s*s\s*\)/i.test(headerText) ? "s" : /\bTime\s*\(\s*ms\s*\)/i.test(headerText) ? "ms" : /\bTime\s*\(\s*(u|µ)s\s*\)/i.test(headerText) ? "us" : null,
+    currentUnit: /\bCurrent\s*\(\s*A\s*\)/i.test(headerText) ? "A" : /\bCurrent\s*\(\s*mA\s*\)/i.test(headerText) ? "mA" : /\bCurrent\s*\(\s*(u|µ)A\s*\)/i.test(headerText) ? "uA" : null,
+  };
   const dataMarker = allLines.findIndex((line) => line.includes("### Data:"));
   const candidateLines = allLines.slice(dataMarker >= 0 ? dataMarker + 1 : 0).filter((line) => line.trim().length > 0);
   const firstNumericLine = candidateLines.find((line) => numericCells(splitWithDelimiter(line, detectDelimiter(line))).length >= 2);
@@ -84,6 +89,7 @@ export function parseData(text, fileName = "uploaded file") {
       rows: [],
       preview: [],
       removedRows: candidateLines.length,
+      unitHints,
       errors: ["No numeric two-column data were found."],
     };
   }
@@ -112,6 +118,7 @@ export function parseData(text, fileName = "uploaded file") {
     rows,
     preview: rows.slice(0, 5),
     removedRows,
+    unitHints,
     errors: rows.length ? [] : ["No valid numeric rows remained after parsing."],
   };
 }
@@ -161,6 +168,39 @@ export function buildTraces(parsedFiles, settings) {
 
 export function detectPulseEdges(points) {
   if (points.length < 3) return { pulseStartIndex: 0, pulseEndIndex: Math.max(0, points.length - 1), confidence: "low" };
+
+  const absCurrents = points.map((point) => Math.abs(point.current));
+  const sortedAbs = [...absCurrents].sort((a, b) => a - b);
+  const medianAbs = sortedAbs[Math.floor(sortedAbs.length / 2)] || 0;
+  const maxAbs = Math.max(...absCurrents);
+  const maxIndex = absCurrents.indexOf(maxAbs);
+  const afterMax = absCurrents[maxIndex + 1] ?? 0;
+  const beforeMax = absCurrents[maxIndex - 1] ?? 0;
+  const isolatedFirstSpike = maxIndex > 0 &&
+    maxIndex < points.length - 2 &&
+    maxAbs > Math.max(medianAbs * 25, afterMax * 5, beforeMax * 5);
+  if (isolatedFirstSpike) {
+    const startIndex = Math.min(points.length - 1, maxIndex + 1);
+    const tailWindowEnd = Math.min(points.length, startIndex + Math.max(12, Math.floor(points.length * 0.1)));
+    const tailAbs = absCurrents.slice(startIndex, tailWindowEnd).filter((value) => Number.isFinite(value));
+    const sortedTail = [...tailAbs].sort((a, b) => a - b);
+    const tailMedian = sortedTail[Math.floor(sortedTail.length / 2)] || medianAbs || maxAbs;
+    let endIndex = points.length - 1;
+    for (let i = startIndex + 3; i < points.length - 1; i += 1) {
+      const isLargeReturnSpike = absCurrents[i] > Math.max(maxAbs * 0.1, tailMedian * 8);
+      const isIsolated = absCurrents[i] > (absCurrents[i - 1] || 0) * 4 && absCurrents[i] > (absCurrents[i + 1] || 0) * 4;
+      if (isLargeReturnSpike && isIsolated) {
+        endIndex = Math.max(startIndex, i - 1);
+        break;
+      }
+    }
+    return {
+      pulseStartIndex: startIndex,
+      pulseEndIndex: endIndex,
+      confidence: "spike-auto",
+      electronicSpikeIndex: maxIndex,
+    };
+  }
 
   let legacyIndex = -1;
   for (let i = 2; i < points.length; i += 1) {
