@@ -17,6 +17,8 @@ The calculator runs entirely in the browser. Uploaded files are parsed locally b
 
 Open `index.html` in a browser, or use the GitHub Pages link once deployed.
 
+Quick-start PDF: [`docs/DIT_Calculator_Quick_Start.pdf`](docs/DIT_Calculator_Quick_Start.pdf)
+
 1. Drop one or more DIT `.txt` files onto the upload area.
 2. Confirm the device constants.
 3. Add ionic resistance values if conductivity and mobility are needed.
