@@ -12,7 +12,7 @@ import {
   runSensitivityAnalysis,
   summarize,
   thermalVoltageFromTemperature,
-} from "./calc.js";
+} from "./calc.js?v=20260610-quick-spike-ui";
 
 const state = {
   files: [],
@@ -283,7 +283,7 @@ function renderEmpty() {
   els.pointCount.textContent = "0";
   els.biasCorrectionFactor.textContent = "--";
   els.resultCards.innerHTML = cardHtml("No data", "Upload DIT files", "Results will appear here.");
-  els.resultsBody.innerHTML = '<tr class="empty-row"><td colspan="10">Upload one or more DIT files to calculate results.</td></tr>';
+  els.resultsBody.innerHTML = '<tr class="empty-row"><td colspan="11">Upload one or more DIT files to calculate results.</td></tr>';
   els.processedTable.innerHTML = "";
   els.rawTable.innerHTML = "";
   els.warningsList.innerHTML = "";
@@ -319,6 +319,7 @@ function renderCards() {
   const mu = summarize(state.results.map((result) => result.mobilityCm2Vs).filter((value) => value !== null));
   const resistance = summarize(state.results.map((result) => result.resistanceOhm).filter((value) => value !== null));
   const window = state.results[0]?.integration;
+  const edgeMode = state.processedTraces[0]?.edges.confidence || "--";
   const validation = state.validation
     ? `${state.validation.passed ? "Validation passed" : "Validation check"}: ${formatNumber(state.validation.errorPct, 3)}% error`
     : "Use synthetic validation sample to check integration.";
@@ -330,6 +331,7 @@ function renderCards() {
     cardHtml("Ionic conductivity", formatNumber(sigma.mean), "S/cm mean"),
     cardHtml("Ion mobility", formatNumber(mu.mean), "cm^2/V/s mean"),
     cardHtml("Integration window", window ? `${formatNumber(window.startTime)} to ${formatNumber(window.endTime)} s` : "--", window ? `${formatNumber(window.duration)} s duration` : ""),
+    cardHtml("Edge detection", edgeMode, edgeMode === "spike-auto" ? "Fast electronic spike excluded automatically." : "Detected from uploaded trace."),
     cardHtml("Baseline method", state.processedTraces[0]?.baseline.mode || "--", `Baseline ${formatNumber(state.processedTraces[0]?.baseline.displayValue)} A`),
     cardHtml("Validation", validation, state.validation?.expectedQ ? `Expected Q ${formatNumber(state.validation.expectedQ)} C` : ""),
   ].join("");
@@ -337,7 +339,7 @@ function renderCards() {
 
 function renderResultsTable() {
   if (!state.results.length) {
-    els.resultsBody.innerHTML = '<tr class="empty-row"><td colspan="10">No results yet.</td></tr>';
+    els.resultsBody.innerHTML = '<tr class="empty-row"><td colspan="11">No results yet.</td></tr>';
     return;
   }
   els.resultsBody.innerHTML = state.results.map((row) => {
@@ -352,6 +354,7 @@ function renderResultsTable() {
         <td>${formatNumber(row.qArealCm2)}</td>
         <td>${formatNumber(row.conductivityScm)}</td>
         <td>${formatNumber(row.mobilityCm2Vs)}</td>
+        <td>${escapeHtml(state.processedTraces.find((trace) => trace.id === row.traceId)?.edges.confidence || "--")}</td>
         <td>${formatNumber(row.integration.startTime)}-${formatNumber(row.integration.endTime)} s</td>
         <td>${traceWarnings.length}</td>
       </tr>
