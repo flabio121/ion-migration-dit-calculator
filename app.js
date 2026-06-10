@@ -299,9 +299,9 @@ function renderCards() {
     ? `${state.validation.passed ? "Validation passed" : "Validation check"}: ${formatNumber(state.validation.errorPct, 3)}% error`
     : "Use synthetic validation sample to check integration.";
   els.resultCards.innerHTML = [
+    cardHtml("Mobile ion concentration, N0", formatNumber(n0.mean), "cm^-3 mean"),
     cardHtml("Integrated ionic charge, Q ion", formatNumber(q.mean), `C mean, n=${q.n}`),
     cardHtml("Areal charge density", formatNumber(qa.mean), "C/cm^2 mean"),
-    cardHtml("Mobile ion concentration, N0", formatNumber(n0.mean), "cm^-3 mean"),
     cardHtml("Ionic resistance, R ion", formatNumber(resistance.mean), `ohm mean, n=${resistance.n}`),
     cardHtml("Ionic conductivity", formatNumber(sigma.mean), "S/cm mean"),
     cardHtml("Ion mobility", formatNumber(mu.mean), "cm^2/V/s mean"),
@@ -322,10 +322,10 @@ function renderResultsTable() {
       <tr>
         <td>${escapeHtml(row.deviceId)}</td>
         <td>${escapeHtml(row.sourceFile)}</td>
+        <td>${formatNumber(row.n0Cm3)}</td>
         <td>${formatNumber(row.resistanceOhm)}</td>
         <td>${formatNumber(row.qIonC)}</td>
         <td>${formatNumber(row.qArealCm2)}</td>
-        <td>${formatNumber(row.n0Cm3)}</td>
         <td>${formatNumber(row.conductivityScm)}</td>
         <td>${formatNumber(row.mobilityCm2Vs)}</td>
         <td>${formatNumber(row.integration.startTime)}-${formatNumber(row.integration.endTime)} s</td>
@@ -414,8 +414,8 @@ function exportCsv() {
     ["app_version", APP_CONFIG.version],
     ["timestamp", new Date().toISOString()],
     [],
-    ["device_id", "source_file", "q_ion_C", "q_areal_C_cm2", "n0_cm3", "r_ion_ohm", "sigma_S_cm", "mobility_cm2_V_s", "baseline_method", "window_start_s", "window_end_s"],
-    ...state.results.map((row) => [row.deviceId, row.sourceFile, row.qIonC, row.qArealCm2, row.n0Cm3, row.resistanceOhm ?? "", row.conductivityScm ?? "", row.mobilityCm2Vs ?? "", row.baselineMode, row.integration.startTime, row.integration.endTime]),
+    ["device_id", "source_file", "n0_cm3", "q_ion_C", "q_areal_C_cm2", "r_ion_ohm", "sigma_S_cm", "mobility_cm2_V_s", "baseline_method", "window_start_s", "window_end_s"],
+    ...state.results.map((row) => [row.deviceId, row.sourceFile, row.n0Cm3, row.qIonC, row.qArealCm2, row.resistanceOhm ?? "", row.conductivityScm ?? "", row.mobilityCm2Vs ?? "", row.baselineMode, row.integration.startTime, row.integration.endTime]),
     [],
     ["warnings"],
     ...state.warnings.map((warning) => [warning.severity, warning.traceId, warning.message]),
