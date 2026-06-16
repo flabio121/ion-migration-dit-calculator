@@ -12,7 +12,7 @@ import {
   runSensitivityAnalysis,
   summarize,
   thermalVoltageFromTemperature,
-} from "./calc.js?v=20260610-quick-spike-ui";
+} from "./calc.js?v=20260616-return-spike-after-negative";
 
 const state = {
   files: [],
@@ -55,6 +55,7 @@ const els = {
   invertCurrent: document.getElementById("invertCurrent"),
   showCurrentDensity: document.getElementById("showCurrentDensity"),
   useAdjacentPairs: document.getElementById("useAdjacentPairs"),
+  integrationMode: document.getElementById("integrationMode"),
   baselineMode: document.getElementById("baselineMode"),
   manualBaseline: document.getElementById("manualBaseline"),
   integrationStart: document.getElementById("integrationStart"),
@@ -139,6 +140,7 @@ function getProcessingSettings() {
     invertCurrent: els.invertCurrent.checked,
     showCurrentDensity: els.showCurrentDensity.checked,
     useAdjacentPairs: els.useAdjacentPairs.checked,
+    integrationMode: els.integrationMode.value,
     baselineMode: els.baselineMode.value,
     manualBaseline: numberFrom(els.manualBaseline),
     integrationStart: els.integrationStart.value === "" ? NaN : numberFrom(els.integrationStart),
@@ -207,6 +209,7 @@ function inferCurrentSignFromWindow() {
     ...baseSettings,
     baselineMode: "manual",
     manualBaseline: 0,
+    integrationMode: "return-spike",
     integrationStart: NaN,
     integrationEnd: NaN,
   });
@@ -330,8 +333,8 @@ function renderCards() {
     cardHtml("Ionic resistance, R ion", formatNumber(resistance.mean), `ohm mean, n=${resistance.n}`),
     cardHtml("Ionic conductivity", formatNumber(sigma.mean), "S/cm mean"),
     cardHtml("Ion mobility", formatNumber(mu.mean), "cm^2/V/s mean"),
-    cardHtml("Integration window", window ? `${formatNumber(window.startTime)} to ${formatNumber(window.endTime)} s` : "--", window ? `${formatNumber(window.duration)} s duration` : ""),
-    cardHtml("Edge detection", edgeMode, edgeMode === "spike-auto" ? "Fast electronic spike excluded automatically." : "Detected from uploaded trace."),
+    cardHtml("Integration window", window ? `${formatNumber(window.startTime)} to ${formatNumber(window.endTime)} s` : "--", window ? `${formatNumber(window.duration)} s, ${window.mode || "window"} mode` : ""),
+    cardHtml("Edge detection", edgeMode, edgeMode.includes("return") ? "Return spike integrated peak to leveled tail." : "Detected from uploaded trace."),
     cardHtml("Baseline method", state.processedTraces[0]?.baseline.mode || "--", `Baseline ${formatNumber(state.processedTraces[0]?.baseline.displayValue)} A`),
     cardHtml("Validation", validation, state.validation?.expectedQ ? `Expected Q ${formatNumber(state.validation.expectedQ)} C` : ""),
   ].join("");
@@ -653,6 +656,7 @@ function loadSyntheticSample() {
   els.invertCurrent.checked = sample.settings.invertCurrent;
   els.useAdjacentPairs.checked = false;
   resetProcessing(false);
+  els.integrationMode.value = "slow-window";
   els.integrationStart.value = sample.settings.integrationStart;
   els.integrationEnd.value = sample.settings.integrationEnd;
   state.parsedFiles = state.files.map((file) => parseData(file.text, file.name));
@@ -661,6 +665,7 @@ function loadSyntheticSample() {
 }
 
 function resetProcessing(run = true) {
+  els.integrationMode.value = "return-spike";
   els.baselineMode.value = "manual";
   els.manualBaseline.value = "0";
   els.integrationStart.value = "";
@@ -695,7 +700,7 @@ els.dropZone.addEventListener("drop", (event) => {
   els.thickness, els.thicknessUnit, els.area, els.areaUnit, els.preloadBias, els.builtInPotential,
   els.temperature, els.temperatureUnit, els.manualThermalVoltage, els.thermalVoltage, els.relativePermittivity,
   els.sampleNotes, els.timeColumn, els.currentColumn, els.timeUnit, els.currentUnit, els.invertCurrent, els.showCurrentDensity,
-  els.useAdjacentPairs, els.baselineMode, els.manualBaseline, els.integrationStart, els.integrationEnd,
+  els.useAdjacentPairs, els.integrationMode, els.baselineMode, els.manualBaseline, els.integrationStart, els.integrationEnd,
   els.excludeSpike, els.smoothData, els.smoothWindow, els.exportWithWarnings,
 ].forEach((element) => element.addEventListener("input", recalculateSafely));
 

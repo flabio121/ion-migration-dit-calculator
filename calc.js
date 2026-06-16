@@ -1,6 +1,6 @@
 export const APP_CONFIG = {
   version: "v0.1 public-beta",
-  methodVersion: "excel-preserved-bias-factor-v1",
+  methodVersion: "excel-return-spike-v3",
   constants: {
     q: 1.602176634e-19,
     eps0: 8.854187817e-12,
@@ -186,10 +186,12 @@ export function detectPulseEdges(points) {
     const sortedTail = [...tailAbs].sort((a, b) => a - b);
     const tailMedian = sortedTail[Math.floor(sortedTail.length / 2)] || medianAbs || maxAbs;
     let endIndex = points.length - 1;
+    let returnSpikeIndex = null;
     for (let i = startIndex + 3; i < points.length - 1; i += 1) {
       const isLargeReturnSpike = absCurrents[i] > Math.max(maxAbs * 0.1, tailMedian * 8);
       const isIsolated = absCurrents[i] > (absCurrents[i - 1] || 0) * 4 && absCurrents[i] > (absCurrents[i + 1] || 0) * 4;
       if (isLargeReturnSpike && isIsolated) {
+        returnSpikeIndex = i;
         endIndex = Math.max(startIndex, i - 1);
         break;
       }
@@ -199,6 +201,7 @@ export function detectPulseEdges(points) {
       pulseEndIndex: endIndex,
       confidence: "spike-auto",
       electronicSpikeIndex: maxIndex,
+      returnSpikeIndex,
     };
   }
 
@@ -227,6 +230,60 @@ export function detectPulseEdges(points) {
     }
   }
   return { pulseStartIndex: bestIndex, pulseEndIndex: points.length - 1, confidence: bestJump > 0 ? "auto" : "low" };
+}
+
+export function detectReturnSpike(points, edges) {
+  if (points.length < 3) return null;
+  if (Number.isInteger(edges.returnSpikeIndex)) return edges.returnSpikeIndex;
+
+  const currents = points.map((point) => point.current);
+  const jumps = [];
+  for (let i = 1; i < currents.length; i += 1) {
+    const jump = Math.abs(currents[i] - currents[i - 1]);
+    if (Number.isFinite(jump)) jumps.push(jump);
+  }
+  const sortedJumps = [...jumps].sort((a, b) => a - b);
+  const medianJump = sortedJumps[Math.floor(sortedJumps.length / 2)] || 0;
+  const minCurrent = Math.min(...currents);
+  const maxCurrent = Math.max(...currents);
+  const range = Math.max(0, maxCurrent - minCurrent);
+  const minProminence = Math.max(medianJump * 8, range * 0.05);
+  const startIndex = edges.confidence?.startsWith("spike-auto")
+    ? Math.min(points.length - 2, Math.max(edges.pulseStartIndex + 3, 1))
+    : 1;
+  const candidates = [];
+
+  for (let i = startIndex; i < points.length - 1; i += 1) {
+    const previous = currents[i - 1];
+    const current = currents[i];
+    const next = currents[i + 1];
+    const incomingJump = Math.abs(current - previous);
+    const recoveryJump = Math.abs(next - current);
+    const isLocalReturn = (current <= previous && current <= next) || (current >= previous && current >= next);
+    const changesSign = previous * current <= 0 || current * next <= 0;
+    const isProminent = incomingJump >= minProminence || (changesSign && incomingJump >= medianJump * 4);
+    if (isLocalReturn && isProminent) {
+      const score = incomingJump + recoveryJump * 0.5 + (changesSign ? range : 0);
+      candidates.push({ index: i, score });
+    }
+  }
+
+  if (candidates.length) {
+    const bestScore = Math.max(...candidates.map((candidate) => candidate.score));
+    const prominentCandidates = candidates.filter((candidate) => candidate.score >= bestScore * 0.1);
+    return prominentCandidates.at(-1).index;
+  }
+
+  let bestIndex = -1;
+  let bestJump = 0;
+  for (let i = startIndex; i < points.length - 1; i += 1) {
+    const jump = Math.abs(points[i].current - points[i - 1].current);
+    if (jump > bestJump) {
+      bestJump = jump;
+      bestIndex = i;
+    }
+  }
+  return bestIndex >= 0 ? bestIndex : null;
 }
 
 export function movingAverage(points, windowSize) {
@@ -284,10 +341,67 @@ export function integrateIonicCharge(points) {
   return charge;
 }
 
-export function processTrace(trace, processingSettings) {
-  const sorted = trace.raw.map((point) => ({ ...point }));
-  const source = processingSettings.smoothData ? movingAverage(sorted, processingSettings.smoothWindow) : sorted;
-  const edges = detectPulseEdges(source);
+function processReturnSpikeTrace(trace, source, edges, processingSettings) {
+  const returnSpikeIndex = detectReturnSpike(source, edges);
+  if (!Number.isInteger(returnSpikeIndex)) {
+    return processTraceStandard(trace, source, edges, processingSettings);
+  }
+
+  const peakSign = source[returnSpikeIndex].current < 0 ? -1 : 1;
+  const firstTailIndex = Math.min(source.length - 1, returnSpikeIndex + 1);
+  let startTime = Number.isFinite(processingSettings.integrationStart)
+    ? processingSettings.integrationStart
+    : source[firstTailIndex].time;
+  const spikeExclusionS = (processingSettings.excludeSpikeUs || 0) * 1e-6;
+  startTime += spikeExclusionS;
+  const requestedEndTime = Number.isFinite(processingSettings.integrationEnd)
+    ? processingSettings.integrationEnd
+    : source[source.length - 1]?.time ?? startTime;
+
+  const startIndexRaw = source.findIndex((point) => point.time >= startTime);
+  const startIndex = Math.max(firstTailIndex, startIndexRaw >= 0 ? startIndexRaw : firstTailIndex);
+  const endIndexRaw = source.findIndex((point) => point.time > requestedEndTime);
+  const endIndex = endIndexRaw >= 0 ? Math.max(startIndex, endIndexRaw - 1) : source.length - 1;
+  const actualStartTime = source[startIndex]?.time ?? startTime;
+  const endTime = source[endIndex]?.time ?? requestedEndTime;
+  const windowPoints = source.slice(startIndex, endIndex + 1);
+  const baselineValue = windowPoints.at(-1)?.current * peakSign || 0;
+  const processed = windowPoints.map((point) => {
+    const orientedCurrent = point.current * peakSign;
+    return {
+      time: point.time,
+      current: orientedCurrent - baselineValue,
+      baseline: baselineValue * peakSign,
+      originalCurrent: point.current,
+    };
+  });
+  const qIonC = integrateIonicCharge(processed);
+  return {
+    ...trace,
+    points: source,
+    processed,
+    edges: { ...edges, returnSpikeIndex, confidence: `${edges.confidence}-return` },
+    integration: {
+      mode: "return-spike",
+      startTime: actualStartTime,
+      endTime,
+      duration: Math.max(0, endTime - actualStartTime),
+      startIndex,
+      endIndex,
+    },
+    baseline: {
+      mode: "return-spike final point",
+      displayValue: baselineValue * peakSign,
+    },
+    qIonC,
+  };
+}
+
+function processTraceStandard(trace, source, edges, processingSettings) {
+  const integrationMode = processingSettings.integrationMode || "slow-window";
+  const defaultEnd = integrationMode === "full-window"
+    ? source[source.length - 1]?.time
+    : source[edges.pulseEndIndex]?.time;
   let startTime = Number.isFinite(processingSettings.integrationStart)
     ? processingSettings.integrationStart
     : source[edges.pulseStartIndex]?.time ?? source[0]?.time ?? 0;
@@ -295,7 +409,7 @@ export function processTrace(trace, processingSettings) {
   startTime += spikeExclusionS;
   const endTime = Number.isFinite(processingSettings.integrationEnd)
     ? processingSettings.integrationEnd
-    : source[edges.pulseEndIndex]?.time ?? source[source.length - 1]?.time ?? startTime;
+    : defaultEnd ?? source[source.length - 1]?.time ?? startTime;
 
   const startIndex = Math.max(0, source.findIndex((point) => point.time >= startTime));
   const endIndexRaw = source.findIndex((point) => point.time > endTime);
@@ -315,6 +429,7 @@ export function processTrace(trace, processingSettings) {
     processed,
     edges,
     integration: {
+      mode: integrationMode,
       startTime,
       endTime,
       duration: Math.max(0, endTime - startTime),
@@ -327,6 +442,16 @@ export function processTrace(trace, processingSettings) {
     },
     qIonC,
   };
+}
+
+export function processTrace(trace, processingSettings) {
+  const sorted = trace.raw.map((point) => ({ ...point }));
+  const source = processingSettings.smoothData ? movingAverage(sorted, processingSettings.smoothWindow) : sorted;
+  const edges = detectPulseEdges(source);
+  if (processingSettings.integrationMode === "return-spike") {
+    return processReturnSpikeTrace(trace, source, edges, processingSettings);
+  }
+  return processTraceStandard(trace, source, edges, processingSettings);
 }
 
 export function computeBiasCorrectionFactor(params) {

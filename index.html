@@ -201,6 +201,14 @@
           </header>
           <div class="settings-grid">
             <label>
+              Integration mode
+              <select id="integrationMode">
+                <option value="return-spike" selected>return spike, peak to tail</option>
+                <option value="slow-window">slow window before return spike</option>
+                <option value="full-window">full post-pulse window</option>
+              </select>
+            </label>
+            <label>
               Baseline mode
               <select id="baselineMode">
                 <option value="manual" selected>manual baseline</option>
@@ -349,7 +357,7 @@
               <h2>Input data</h2>
               <p>Use text, CSV, or TSV files with time/current columns. Files with PAIOS-style headers are supported by detecting the numeric data region after <code>### Data:</code>.</p>
               <h2>Interpretation</h2>
-              <p>Use the processed plot to verify that the shaded region contains the slow ionic relaxation and excludes the fast electronic spike.</p>
+              <p>Use the processed plot to verify that the shaded region contains the intended ionic response. Return-spike mode follows the Excel workflow by integrating from the return-spike peak to the leveled tail.</p>
             </div>
             <div>
               <h2>Limitations</h2>
@@ -414,6 +422,6 @@
       </section>
     </main>
 
-    <script type="module" src="./app.js?v=20260610-quick-spike-ui"></script>
+    <script type="module" src="./app.js?v=20260616-return-spike-after-negative"></script>
   </body>
 </html>
