@@ -144,5 +144,18 @@ assert.equal(processedPlateauReturn.edges.returnSpikeIndex, 880);
 assert.equal(processedPlateauReturn.integration.startIndex, 881);
 assert.ok(processedPlateauReturn.qIonC > 0);
 
+const manualReturnWindow = processTrace(plateauTrace, {
+  integrationMode: "return-spike",
+  baselineMode: "manual",
+  manualBaseline: 0,
+  integrationStart: plateauTrace.raw[875].time,
+  integrationEnd: plateauTrace.raw[885].time,
+  excludeSpikeUs: 0,
+  smoothData: false,
+  smoothWindow: 5,
+});
+assert.equal(manualReturnWindow.integration.startIndex, 875);
+assert.equal(manualReturnWindow.integration.endIndex, 885);
+
 console.log(`Synthetic validation error: ${errorPct.toFixed(3)}%`);
 console.log("Calculator validation tests passed.");

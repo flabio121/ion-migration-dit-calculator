@@ -12,7 +12,7 @@ import {
   runSensitivityAnalysis,
   summarize,
   thermalVoltageFromTemperature,
-} from "./calc.js?v=20260616-return-spike-after-negative";
+} from "./calc.js?v=20260616-manual-window-overlay";
 
 const state = {
   files: [],
@@ -54,6 +54,7 @@ const els = {
   currentUnit: document.getElementById("currentUnit"),
   invertCurrent: document.getElementById("invertCurrent"),
   showCurrentDensity: document.getElementById("showCurrentDensity"),
+  showIntegrationRegion: document.getElementById("showIntegrationRegion"),
   useAdjacentPairs: document.getElementById("useAdjacentPairs"),
   integrationMode: document.getElementById("integrationMode"),
   baselineMode: document.getElementById("baselineMode"),
@@ -556,7 +557,7 @@ function drawPlot() {
   ctx.fillText(yLabel, 0, 0);
   ctx.restore();
 
-  if (state.plotMode === "processed" && state.processedTraces[0]) {
+  if (els.showIntegrationRegion.checked && state.processedTraces[0]) {
     const first = state.processedTraces[0];
     const xs = x(first.integration.startTime);
     const xe = x(first.integration.endTime);
@@ -576,7 +577,7 @@ function drawPlot() {
     ctx.setLineDash([]);
     ctx.fillStyle = "#33404c";
     ctx.textAlign = "left";
-    ctx.fillText("integrated ionic region", Math.min(xs, xe) + 8, margin.top + 18);
+    ctx.fillText("selected integration region", Math.min(xs, xe) + 8, margin.top + 18);
     ctx.fillText("fast electronic response", x(first.points[first.edges.pulseStartIndex]?.time ?? first.integration.startTime) + 8, margin.top + 38);
     ctx.fillText("slow ionic relaxation", margin.left + plotW * 0.62, margin.top + 58);
   }
@@ -700,7 +701,7 @@ els.dropZone.addEventListener("drop", (event) => {
   els.thickness, els.thicknessUnit, els.area, els.areaUnit, els.preloadBias, els.builtInPotential,
   els.temperature, els.temperatureUnit, els.manualThermalVoltage, els.thermalVoltage, els.relativePermittivity,
   els.sampleNotes, els.timeColumn, els.currentColumn, els.timeUnit, els.currentUnit, els.invertCurrent, els.showCurrentDensity,
-  els.useAdjacentPairs, els.integrationMode, els.baselineMode, els.manualBaseline, els.integrationStart, els.integrationEnd,
+  els.useAdjacentPairs, els.showIntegrationRegion, els.integrationMode, els.baselineMode, els.manualBaseline, els.integrationStart, els.integrationEnd,
   els.excludeSpike, els.smoothData, els.smoothWindow, els.exportWithWarnings,
 ].forEach((element) => element.addEventListener("input", recalculateSafely));
 

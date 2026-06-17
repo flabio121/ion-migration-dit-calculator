@@ -1,6 +1,6 @@
 export const APP_CONFIG = {
   version: "v0.1 public-beta",
-  methodVersion: "excel-return-spike-v3",
+  methodVersion: "excel-return-spike-v4",
   constants: {
     q: 1.602176634e-19,
     eps0: 8.854187817e-12,
@@ -343,28 +343,32 @@ export function integrateIonicCharge(points) {
 
 function processReturnSpikeTrace(trace, source, edges, processingSettings) {
   const returnSpikeIndex = detectReturnSpike(source, edges);
-  if (!Number.isInteger(returnSpikeIndex)) {
+  const hasManualStart = Number.isFinite(processingSettings.integrationStart);
+  const hasManualEnd = Number.isFinite(processingSettings.integrationEnd);
+  if (!Number.isInteger(returnSpikeIndex) && !(hasManualStart && hasManualEnd)) {
     return processTraceStandard(trace, source, edges, processingSettings);
   }
 
-  const peakSign = source[returnSpikeIndex].current < 0 ? -1 : 1;
-  const firstTailIndex = Math.min(source.length - 1, returnSpikeIndex + 1);
-  let startTime = Number.isFinite(processingSettings.integrationStart)
+  const firstTailIndex = Number.isInteger(returnSpikeIndex) ? Math.min(source.length - 1, returnSpikeIndex + 1) : 0;
+  let startTime = hasManualStart
     ? processingSettings.integrationStart
     : source[firstTailIndex].time;
   const spikeExclusionS = (processingSettings.excludeSpikeUs || 0) * 1e-6;
   startTime += spikeExclusionS;
-  const requestedEndTime = Number.isFinite(processingSettings.integrationEnd)
+  const requestedEndTime = hasManualEnd
     ? processingSettings.integrationEnd
     : source[source.length - 1]?.time ?? startTime;
 
   const startIndexRaw = source.findIndex((point) => point.time >= startTime);
-  const startIndex = Math.max(firstTailIndex, startIndexRaw >= 0 ? startIndexRaw : firstTailIndex);
+  const requestedStartIndex = startIndexRaw >= 0 ? startIndexRaw : source.length - 1;
+  const startIndex = hasManualStart ? Math.max(0, requestedStartIndex) : Math.max(firstTailIndex, requestedStartIndex);
   const endIndexRaw = source.findIndex((point) => point.time > requestedEndTime);
   const endIndex = endIndexRaw >= 0 ? Math.max(startIndex, endIndexRaw - 1) : source.length - 1;
   const actualStartTime = source[startIndex]?.time ?? startTime;
   const endTime = source[endIndex]?.time ?? requestedEndTime;
   const windowPoints = source.slice(startIndex, endIndex + 1);
+  const signReferenceIndex = Number.isInteger(returnSpikeIndex) ? returnSpikeIndex : startIndex;
+  const peakSign = source[signReferenceIndex]?.current < 0 ? -1 : 1;
   const baselineValue = windowPoints.at(-1)?.current * peakSign || 0;
   const processed = windowPoints.map((point) => {
     const orientedCurrent = point.current * peakSign;
