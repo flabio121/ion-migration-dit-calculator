@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   buildTraces,
   convertInputsToSI,
@@ -8,6 +11,8 @@ import {
   parseData,
   processTrace,
 } from "../calc.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const defaultInputs = convertInputsToSI({
   thickness: 550,
@@ -106,9 +111,9 @@ const processedReturnSpike = processTrace(comsolTrace, {
   smoothWindow: 5,
 });
 assert.equal(processedReturnSpike.edges.returnSpikeIndex, 600);
-assert.equal(processedReturnSpike.integration.startIndex, 601);
+assert.equal(processedReturnSpike.integration.startIndex, 600);
 assert.equal(processedReturnSpike.integration.endIndex, 650);
-assert.equal(processedReturnSpike.baseline.mode, "return-spike final point");
+assert.equal(processedReturnSpike.baseline.mode, "return-spike zero baseline");
 assert.ok(processedReturnSpike.qIonC > 0);
 
 const broadPlateauNegativeSpike = `% Model\tplateau_return.mph
@@ -141,7 +146,7 @@ const processedPlateauReturn = processTrace(plateauTrace, {
   smoothWindow: 5,
 });
 assert.equal(processedPlateauReturn.edges.returnSpikeIndex, 880);
-assert.equal(processedPlateauReturn.integration.startIndex, 881);
+assert.equal(processedPlateauReturn.integration.startIndex, 880);
 assert.ok(processedPlateauReturn.qIonC > 0);
 
 const manualReturnWindow = processTrace(plateauTrace, {
@@ -156,6 +161,63 @@ const manualReturnWindow = processTrace(plateauTrace, {
 });
 assert.equal(manualReturnWindow.integration.startIndex, 875);
 assert.equal(manualReturnWindow.integration.endIndex, 885);
+
+const tdcFixtureDir = path.resolve(__dirname, "../../Mobile_Ion_Calc_Test/Test TDC Files");
+if (fs.existsSync(tdcFixtureDir)) {
+  const expectedTdcN0Cm3 = [
+    1.74665e17,
+    2.04989e17,
+    2.12949e17,
+    2.15636e17,
+    1.99766e17,
+    2.04989e17,
+    2.04989e17,
+    7.49039e16,
+    2.10013e17,
+  ];
+  const tdcInputs = convertInputsToSI({
+    thickness: 550,
+    thicknessUnit: "nm",
+    area: 0.09,
+    areaUnit: "cm2",
+    preloadBias: 0.8,
+    builtInPotential: 1.2,
+    temperature: 300,
+    temperatureUnit: "K",
+    thermalVoltage: 0.02585,
+    manualThermalVoltage: true,
+    relativePermittivity: 24.2,
+  });
+  const tdcSettings = {
+    timeColumn: 0,
+    currentColumn: 1,
+    timeUnit: "us",
+    currentUnit: "mA",
+    invertCurrent: true,
+    useAdjacentPairs: false,
+    integrationMode: "return-spike",
+    baselineMode: "manual",
+    manualBaseline: 0,
+    integrationStart: NaN,
+    integrationEnd: NaN,
+    excludeSpikeUs: 0,
+    smoothData: false,
+    smoothWindow: 5,
+  };
+
+  expectedTdcN0Cm3.forEach((expectedN0, index) => {
+    const fileName = `${index}.txt`;
+    const parsedTdc = parseData(fs.readFileSync(path.join(tdcFixtureDir, fileName), "utf8"), fileName);
+    assert.equal(parsedTdc.errors.length, 0);
+    const [tdcTrace] = buildTraces([parsedTdc], tdcSettings);
+    const processedTdc = processTrace(tdcTrace, tdcSettings);
+    const [tdcResult] = computeResults([processedTdc], tdcInputs, [NaN]);
+    const errorPct = Math.abs((tdcResult.n0Cm3 - expectedN0) / expectedN0) * 100;
+    assert.ok(errorPct < 1.5, `${fileName} TDC N0 error ${errorPct.toFixed(3)}%`);
+    assert.equal(processedTdc.integration.startIndex, processedTdc.edges.returnSpikeIndex);
+    assert.equal(processedTdc.baseline.mode, "return-spike zero baseline");
+  });
+}
 
 console.log(`Synthetic validation error: ${errorPct.toFixed(3)}%`);
 console.log("Calculator validation tests passed.");

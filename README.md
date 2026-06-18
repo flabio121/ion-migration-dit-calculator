@@ -15,7 +15,7 @@ The calculator runs entirely in the browser. Uploaded files are parsed locally b
 - Preview raw and processed data tables
 - Export CSV summaries, JSON reproducibility reports, and PNG plots
 - Run an in-browser synthetic validation sample with known integrated charge
-- Supports COMSOL-style time/current exports with fast electronic spikes by starting integration after the first spike and ending before a return spike when detected
+- Supports PAIOS TDC/DIT-style return-spike integration by integrating directly from the post-pulse spike peak through the tail with a zero-current baseline
 
 ## Use
 

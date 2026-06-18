@@ -1,6 +1,6 @@
 export const APP_CONFIG = {
   version: "v0.1 public-beta",
-  methodVersion: "excel-return-spike-v4",
+  methodVersion: "tdc-return-spike-peak-v5",
   constants: {
     q: 1.602176634e-19,
     eps0: 8.854187817e-12,
@@ -349,10 +349,10 @@ function processReturnSpikeTrace(trace, source, edges, processingSettings) {
     return processTraceStandard(trace, source, edges, processingSettings);
   }
 
-  const firstTailIndex = Number.isInteger(returnSpikeIndex) ? Math.min(source.length - 1, returnSpikeIndex + 1) : 0;
+  const peakIndex = Number.isInteger(returnSpikeIndex) ? returnSpikeIndex : 0;
   let startTime = hasManualStart
     ? processingSettings.integrationStart
-    : source[firstTailIndex].time;
+    : source[peakIndex].time;
   const spikeExclusionS = (processingSettings.excludeSpikeUs || 0) * 1e-6;
   startTime += spikeExclusionS;
   const requestedEndTime = hasManualEnd
@@ -361,7 +361,7 @@ function processReturnSpikeTrace(trace, source, edges, processingSettings) {
 
   const startIndexRaw = source.findIndex((point) => point.time >= startTime);
   const requestedStartIndex = startIndexRaw >= 0 ? startIndexRaw : source.length - 1;
-  const startIndex = hasManualStart ? Math.max(0, requestedStartIndex) : Math.max(firstTailIndex, requestedStartIndex);
+  const startIndex = hasManualStart ? Math.max(0, requestedStartIndex) : Math.max(peakIndex, requestedStartIndex);
   const endIndexRaw = source.findIndex((point) => point.time > requestedEndTime);
   const endIndex = endIndexRaw >= 0 ? Math.max(startIndex, endIndexRaw - 1) : source.length - 1;
   const actualStartTime = source[startIndex]?.time ?? startTime;
@@ -369,7 +369,7 @@ function processReturnSpikeTrace(trace, source, edges, processingSettings) {
   const windowPoints = source.slice(startIndex, endIndex + 1);
   const signReferenceIndex = Number.isInteger(returnSpikeIndex) ? returnSpikeIndex : startIndex;
   const peakSign = source[signReferenceIndex]?.current < 0 ? -1 : 1;
-  const baselineValue = windowPoints.at(-1)?.current * peakSign || 0;
+  const baselineValue = 0;
   const processed = windowPoints.map((point) => {
     const orientedCurrent = point.current * peakSign;
     return {
@@ -394,7 +394,7 @@ function processReturnSpikeTrace(trace, source, edges, processingSettings) {
       endIndex,
     },
     baseline: {
-      mode: "return-spike final point",
+      mode: "return-spike zero baseline",
       displayValue: baselineValue * peakSign,
     },
     qIonC,

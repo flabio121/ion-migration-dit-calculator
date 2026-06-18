@@ -52,7 +52,7 @@
                 <li>The concentration expression preserves the validated Excel-model form currently implemented in the calculator.</li>
                 <li>Results depend strongly on baseline choice, integration window, active area, thermal voltage, permittivity, and ionic resistance.</li>
                 <li>The tool estimates effective mobile-ion characteristics; it does not uniquely identify a microscopic ionic species.</li>
-                <li>Electronic spikes should be excluded from the ionic integration window.</li>
+                <li>Initial electronic spikes should be excluded from the ionic integration window.</li>
                 <li>Severe shunts, unstable baselines, or incorrect units can invalidate the estimate.</li>
               </ul>
             </div>
@@ -361,7 +361,7 @@
               <h2>Input data</h2>
               <p>Use text, CSV, or TSV files with time/current columns. Files with PAIOS-style headers are supported by detecting the numeric data region after <code>### Data:</code>.</p>
               <h2>Interpretation</h2>
-              <p>Use the processed plot to verify that the shaded region contains the intended ionic response. Return-spike mode follows the Excel workflow by integrating from the return-spike peak to the leveled tail.</p>
+              <p>Use the processed plot to verify that the shaded region contains the intended ionic response. Return-spike mode follows the current TDC workflow by integrating from the return-spike peak to the tail with a zero-current baseline.</p>
             </div>
             <div>
               <h2>Limitations</h2>

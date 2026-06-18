@@ -335,7 +335,7 @@ function renderCards() {
     cardHtml("Ionic conductivity", formatNumber(sigma.mean), "S/cm mean"),
     cardHtml("Ion mobility", formatNumber(mu.mean), "cm^2/V/s mean"),
     cardHtml("Integration window", window ? `${formatNumber(window.startTime)} to ${formatNumber(window.endTime)} s` : "--", window ? `${formatNumber(window.duration)} s, ${window.mode || "window"} mode` : ""),
-    cardHtml("Edge detection", edgeMode, edgeMode.includes("return") ? "Return spike integrated peak to leveled tail." : "Detected from uploaded trace."),
+    cardHtml("Edge detection", edgeMode, edgeMode.includes("return") ? "Return spike integrated peak to tail with zero baseline." : "Detected from uploaded trace."),
     cardHtml("Baseline method", state.processedTraces[0]?.baseline.mode || "--", `Baseline ${formatNumber(state.processedTraces[0]?.baseline.displayValue)} A`),
     cardHtml("Validation", validation, state.validation?.expectedQ ? `Expected Q ${formatNumber(state.validation.expectedQ)} C` : ""),
   ].join("");
