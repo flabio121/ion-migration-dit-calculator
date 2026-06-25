@@ -205,11 +205,16 @@
           </header>
           <div class="settings-grid">
             <label>
-              Integration mode
-              <select id="integrationMode">
-                <option value="return-spike" selected>return spike, peak to tail</option>
-                <option value="slow-window">slow window before return spike</option>
-                <option value="full-window">full post-pulse window</option>
+              Integration preset
+              <select id="integrationPreset">
+                <option value="0">Include return spike</option>
+                <option value="post-sample">Start after spike sample</option>
+                <option value="25">Exclude first 25 us</option>
+                <option value="50">Exclude first 50 us</option>
+                <option value="100">Exclude first 100 us</option>
+                <option value="250" selected>Exclude first 250 us</option>
+                <option value="500">Exclude first 500 us</option>
+                <option value="custom">Custom window</option>
               </select>
             </label>
             <label>
@@ -229,23 +234,23 @@
               </span>
             </label>
             <label>
-              Integration start
+              Custom start
               <span class="input-with-unit">
-                <input id="integrationStart" type="number" step="any">
+                <input id="integrationStart" type="number" step="any" disabled>
                 <span>s</span>
               </span>
             </label>
             <label>
-              Integration end
+              Custom end
               <span class="input-with-unit">
-                <input id="integrationEnd" type="number" step="any">
+                <input id="integrationEnd" type="number" step="any" disabled>
                 <span>s</span>
               </span>
             </label>
             <label>
-              Exclude fast spike
+              Custom exclusion
               <span class="input-with-unit">
-                <input id="excludeSpike" type="number" step="any" value="0">
+                <input id="excludeSpike" type="number" step="any" value="250" disabled>
                 <span>us</span>
               </span>
             </label>
@@ -426,6 +431,6 @@
       </section>
     </main>
 
-    <script type="module" src="./app.js?v=20260625-setfos-unit-detection"></script>
+    <script type="module" src="./app.js?v=20260625-integration-presets"></script>
   </body>
 </html>

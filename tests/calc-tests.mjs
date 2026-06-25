@@ -136,6 +136,19 @@ const excludedReturnSpike = processTrace(comsolTrace, {
 assert.ok(excludedReturnSpike.integration.startIndex > processedReturnSpike.integration.startIndex);
 assert.ok(excludedReturnSpike.integration.startTime >= comsolTrace.raw[600].time + 100e-6);
 
+const postSpikeSample = processTrace(comsolTrace, {
+  integrationMode: "return-spike",
+  baselineMode: "manual",
+  manualBaseline: 0,
+  integrationStart: NaN,
+  integrationEnd: NaN,
+  excludeSpikeUs: 0,
+  startAfterSpikeSample: true,
+  smoothData: false,
+  smoothWindow: 5,
+});
+assert.equal(postSpikeSample.integration.startIndex, 601);
+
 const broadPlateauNegativeSpike = `% Model\tplateau_return.mph
 % Time (s)\tTerminal current (A)
 ${Array.from({ length: 1063 }, (_, i) => {

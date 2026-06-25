@@ -12,7 +12,7 @@ import {
   runSensitivityAnalysis,
   summarize,
   thermalVoltageFromTemperature,
-} from "./calc.js?v=20260625-setfos-unit-detection";
+} from "./calc.js?v=20260625-integration-presets";
 
 const state = {
   files: [],
@@ -56,7 +56,7 @@ const els = {
   showCurrentDensity: document.getElementById("showCurrentDensity"),
   showIntegrationRegion: document.getElementById("showIntegrationRegion"),
   useAdjacentPairs: document.getElementById("useAdjacentPairs"),
-  integrationMode: document.getElementById("integrationMode"),
+  integrationPreset: document.getElementById("integrationPreset"),
   baselineMode: document.getElementById("baselineMode"),
   manualBaseline: document.getElementById("manualBaseline"),
   integrationStart: document.getElementById("integrationStart"),
@@ -133,6 +133,9 @@ function getInputsRaw() {
 }
 
 function getProcessingSettings() {
+  const preset = els.integrationPreset.value;
+  const customWindow = preset === "custom";
+  const postSampleOnly = preset === "post-sample";
   return {
     timeColumn: Number(els.timeColumn.value || 0),
     currentColumn: Number(els.currentColumn.value || 1),
@@ -141,15 +144,23 @@ function getProcessingSettings() {
     invertCurrent: els.invertCurrent.checked,
     showCurrentDensity: els.showCurrentDensity.checked,
     useAdjacentPairs: els.useAdjacentPairs.checked,
-    integrationMode: els.integrationMode.value,
+    integrationMode: "return-spike",
     baselineMode: els.baselineMode.value,
     manualBaseline: numberFrom(els.manualBaseline),
-    integrationStart: els.integrationStart.value === "" ? NaN : numberFrom(els.integrationStart),
-    integrationEnd: els.integrationEnd.value === "" ? NaN : numberFrom(els.integrationEnd),
-    excludeSpikeUs: numberFrom(els.excludeSpike),
+    integrationStart: customWindow && els.integrationStart.value !== "" ? numberFrom(els.integrationStart) : NaN,
+    integrationEnd: customWindow && els.integrationEnd.value !== "" ? numberFrom(els.integrationEnd) : NaN,
+    excludeSpikeUs: customWindow ? numberFrom(els.excludeSpike) : postSampleOnly ? 0 : Number(preset),
+    startAfterSpikeSample: postSampleOnly,
     smoothData: els.smoothData.checked,
     smoothWindow: numberFrom(els.smoothWindow),
   };
+}
+
+function updateIntegrationPreset() {
+  const customWindow = els.integrationPreset.value === "custom";
+  els.integrationStart.disabled = !customWindow;
+  els.integrationEnd.disabled = !customWindow;
+  els.excludeSpike.disabled = !customWindow;
 }
 
 function updateThermalVoltage() {
@@ -499,6 +510,11 @@ function drawPlot() {
   const all = nonEmpty.flat();
   let minX = Math.min(...all.map((point) => point.time));
   let maxX = Math.max(...all.map((point) => point.time));
+  const firstProcessed = state.processedTraces[0];
+  const returnSpikeTime = firstProcessed?.points[firstProcessed.edges.returnSpikeIndex]?.time;
+  if (state.plotMode === "processed" && Number.isFinite(returnSpikeTime)) {
+    minX = Math.min(minX, returnSpikeTime);
+  }
   let minY = Math.min(...all.map((point) => point.current));
   let maxY = Math.max(...all.map((point) => point.current));
   if (minX === maxX) [minX, maxX] = [minX - 1, maxX + 1];
@@ -561,8 +577,17 @@ function drawPlot() {
 
   if (els.showIntegrationRegion.checked && state.processedTraces[0]) {
     const first = state.processedTraces[0];
+    const firstReturnSpikeTime = first.points[first.edges.returnSpikeIndex]?.time;
     const xs = x(first.integration.startTime);
     const xe = x(first.integration.endTime);
+    if (Number.isFinite(firstReturnSpikeTime) && first.integration.startTime > firstReturnSpikeTime) {
+      const spikeX = x(firstReturnSpikeTime);
+      ctx.fillStyle = "rgba(192, 90, 40, 0.18)";
+      ctx.fillRect(Math.min(spikeX, xs), margin.top, Math.abs(xs - spikeX), plotH);
+      ctx.fillStyle = "#8f3f1d";
+      ctx.textAlign = "left";
+      ctx.fillText("excluded electronic response", Math.min(spikeX, xs) + 6, margin.top + 18);
+    }
     ctx.fillStyle = "rgba(14, 124, 134, 0.10)";
     ctx.fillRect(Math.min(xs, xe), margin.top, Math.abs(xe - xs), plotH);
     drawVLine(ctx, xs, margin, plotH, "#0e7c86", "integration start");
@@ -579,8 +604,7 @@ function drawPlot() {
     ctx.setLineDash([]);
     ctx.fillStyle = "#33404c";
     ctx.textAlign = "left";
-    ctx.fillText("selected integration region", Math.min(xs, xe) + 8, margin.top + 18);
-    ctx.fillText("fast electronic response", x(first.points[first.edges.pulseStartIndex]?.time ?? first.integration.startTime) + 8, margin.top + 38);
+    ctx.fillText("integrated ionic region", Math.min(xs, xe) + 8, margin.top + 38);
     ctx.fillText("slow ionic relaxation", margin.left + plotW * 0.62, margin.top + 58);
   }
 
@@ -659,7 +683,8 @@ function loadSyntheticSample() {
   els.invertCurrent.checked = sample.settings.invertCurrent;
   els.useAdjacentPairs.checked = false;
   resetProcessing(false);
-  els.integrationMode.value = "slow-window";
+  els.integrationPreset.value = "custom";
+  updateIntegrationPreset();
   els.integrationStart.value = sample.settings.integrationStart;
   els.integrationEnd.value = sample.settings.integrationEnd;
   state.parsedFiles = state.files.map((file) => parseData(file.text, file.name));
@@ -668,12 +693,13 @@ function loadSyntheticSample() {
 }
 
 function resetProcessing(run = true) {
-  els.integrationMode.value = "return-spike";
+  els.integrationPreset.value = "250";
   els.baselineMode.value = "manual";
   els.manualBaseline.value = "0";
   els.integrationStart.value = "";
   els.integrationEnd.value = "";
-  els.excludeSpike.value = "0";
+  els.excludeSpike.value = "250";
+  updateIntegrationPreset();
   els.smoothData.checked = false;
   els.smoothWindow.value = "5";
   if (run) recalculateSafely();
@@ -703,9 +729,11 @@ els.dropZone.addEventListener("drop", (event) => {
   els.thickness, els.thicknessUnit, els.area, els.areaUnit, els.preloadBias, els.builtInPotential,
   els.temperature, els.temperatureUnit, els.manualThermalVoltage, els.thermalVoltage, els.relativePermittivity,
   els.sampleNotes, els.timeColumn, els.currentColumn, els.timeUnit, els.currentUnit, els.invertCurrent, els.showCurrentDensity,
-  els.useAdjacentPairs, els.showIntegrationRegion, els.integrationMode, els.baselineMode, els.manualBaseline, els.integrationStart, els.integrationEnd,
+  els.useAdjacentPairs, els.showIntegrationRegion, els.integrationPreset, els.baselineMode, els.manualBaseline, els.integrationStart, els.integrationEnd,
   els.excludeSpike, els.smoothData, els.smoothWindow, els.exportWithWarnings,
 ].forEach((element) => element.addEventListener("input", recalculateSafely));
+
+els.integrationPreset.addEventListener("change", updateIntegrationPreset);
 
 els.addResistance.addEventListener("click", () => addResistanceInput());
 els.resetProcessing.addEventListener("click", () => resetProcessing());
@@ -733,4 +761,5 @@ document.querySelectorAll(".tab-button").forEach((button) => {
   });
 });
 
+updateIntegrationPreset();
 window.addEventListener("resize", () => drawPlot());

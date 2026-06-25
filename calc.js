@@ -1,6 +1,6 @@
 export const APP_CONFIG = {
   version: "v0.1 public-beta",
-  methodVersion: "tdc-return-spike-peak-v6",
+  methodVersion: "tdc-integration-presets-v7",
   constants: {
     q: 1.602176634e-19,
     eps0: 8.854187817e-12,
@@ -360,9 +360,12 @@ function processReturnSpikeTrace(trace, source, edges, processingSettings) {
   }
 
   const peakIndex = Number.isInteger(returnSpikeIndex) ? returnSpikeIndex : 0;
+  const automaticStartIndex = processingSettings.startAfterSpikeSample
+    ? Math.min(source.length - 1, peakIndex + 1)
+    : peakIndex;
   let startTime = hasManualStart
     ? processingSettings.integrationStart
-    : source[peakIndex].time;
+    : source[automaticStartIndex].time;
   const spikeExclusionS = (processingSettings.excludeSpikeUs || 0) * 1e-6;
   startTime += spikeExclusionS;
   const requestedEndTime = hasManualEnd
@@ -371,7 +374,7 @@ function processReturnSpikeTrace(trace, source, edges, processingSettings) {
 
   const startIndexRaw = source.findIndex((point) => point.time >= startTime);
   const requestedStartIndex = startIndexRaw >= 0 ? startIndexRaw : source.length - 1;
-  const startIndex = hasManualStart ? Math.max(0, requestedStartIndex) : Math.max(peakIndex, requestedStartIndex);
+  const startIndex = hasManualStart ? Math.max(0, requestedStartIndex) : Math.max(automaticStartIndex, requestedStartIndex);
   const endIndexRaw = source.findIndex((point) => point.time > requestedEndTime);
   const endIndex = endIndexRaw >= 0 ? Math.max(startIndex, endIndexRaw - 1) : source.length - 1;
   const actualStartTime = source[startIndex]?.time ?? startTime;
