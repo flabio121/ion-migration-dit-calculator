@@ -12,7 +12,7 @@ import {
   runSensitivityAnalysis,
   summarize,
   thermalVoltageFromTemperature,
-} from "./calc.js?v=20260616-manual-window-overlay";
+} from "./calc.js?v=20260625-setfos-unit-detection";
 
 const state = {
   files: [],
@@ -225,7 +225,9 @@ function renderPreview() {
     return;
   }
   const totalRows = state.parsedFiles.reduce((sum, file) => sum + file.rows.length, 0);
-  els.parseSummary.textContent = `${state.parsedFiles.length} file(s), ${totalRows} numeric rows, ${first.columns.length} detected columns, delimiter: ${first.delimiter}.`;
+  const detectedUnits = [first.unitHints.timeUnit, first.unitHints.currentUnit].filter(Boolean).join(", ");
+  const unitSummary = detectedUnits ? `, detected units: ${detectedUnits}` : "";
+  els.parseSummary.textContent = `${state.parsedFiles.length} file(s), ${totalRows} numeric rows, ${first.columns.length} detected columns, delimiter: ${first.delimiter}${unitSummary}.`;
   const header = `<thead><tr><th>Row</th>${first.columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("")}</tr></thead>`;
   const body = `<tbody>${first.preview.map((row, index) => `
     <tr><td>${index + 1}</td>${first.columns.map((_, columnIndex) => `<td>${formatNumber(row[columnIndex])}</td>`).join("")}</tr>

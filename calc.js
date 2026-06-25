@@ -1,6 +1,6 @@
 export const APP_CONFIG = {
   version: "v0.1 public-beta",
-  methodVersion: "tdc-return-spike-peak-v5",
+  methodVersion: "tdc-return-spike-peak-v6",
   constants: {
     q: 1.602176634e-19,
     eps0: 8.854187817e-12,
@@ -74,9 +74,19 @@ function numericCells(parts) {
 export function parseData(text, fileName = "uploaded file") {
   const allLines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   const headerText = allLines.slice(0, 30).join(" ");
-  const unitHints = {
+  const legacyUnitHints = {
     timeUnit: /\bTime\s*\(\s*s\s*\)/i.test(headerText) ? "s" : /\bTime\s*\(\s*ms\s*\)/i.test(headerText) ? "ms" : /\bTime\s*\(\s*(u|µ)s\s*\)/i.test(headerText) ? "us" : null,
     currentUnit: /\bCurrent\s*\(\s*A\s*\)/i.test(headerText) ? "A" : /\bCurrent\s*\(\s*mA\s*\)/i.test(headerText) ? "mA" : /\bCurrent\s*\(\s*(u|µ)A\s*\)/i.test(headerText) ? "uA" : null,
+  };
+  const microPrefix = "(?:u|\\u00b5|\\u03bc|\\u00c2\\u00b5)";
+  const timeHeader = headerText.match(new RegExp(`\\b(?:Time|t)\\s*\\(\\s*(s|ms|${microPrefix}s)\\s*\\)`, "i"));
+  const currentHeader = headerText.match(new RegExp(`\\bCurrent\\b.{0,80}?(?:\\(|\\[)\\s*(A|mA|${microPrefix}A)\\b`, "i"));
+  const normalizeUnit = (unit) => unit?.replace(/\u00c2\u00b5|\u00b5|\u03bc/gi, "u").toLowerCase();
+  const timeToken = normalizeUnit(timeHeader?.[1]);
+  const currentToken = normalizeUnit(currentHeader?.[1]);
+  const unitHints = {
+    timeUnit: timeToken === "s" ? "s" : timeToken === "ms" ? "ms" : timeToken === "us" ? "us" : legacyUnitHints.timeUnit,
+    currentUnit: currentToken === "a" ? "A" : currentToken === "ma" ? "mA" : currentToken === "ua" ? "uA" : legacyUnitHints.currentUnit,
   };
   const dataMarker = allLines.findIndex((line) => line.includes("### Data:"));
   const candidateLines = allLines.slice(dataMarker >= 0 ? dataMarker + 1 : 0).filter((line) => line.trim().length > 0);

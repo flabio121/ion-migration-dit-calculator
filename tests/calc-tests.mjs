@@ -76,6 +76,13 @@ const parsedComsol = parseData(comsolQuickSpike, "comsol-quick-spike.txt");
 assert.equal(parsedComsol.errors.length, 0);
 assert.equal(parsedComsol.unitHints.timeUnit, "s");
 assert.equal(parsedComsol.unitHints.currentUnit, "mA");
+const parsedSetfosHeader = parseData(`# Device current transient [mA/cm^2]
+# Column format:
+# t (us)\tJ\tJbimolecular
+0\t0\t0
+1000\t1\t0`, "setfos-header.txt");
+assert.equal(parsedSetfosHeader.unitHints.timeUnit, "us");
+assert.equal(parsedSetfosHeader.unitHints.currentUnit, "mA");
 const comsolTrace = buildTraces([parsedComsol], {
   timeColumn: 0,
   currentColumn: 1,
@@ -115,6 +122,19 @@ assert.equal(processedReturnSpike.integration.startIndex, 600);
 assert.equal(processedReturnSpike.integration.endIndex, 650);
 assert.equal(processedReturnSpike.baseline.mode, "return-spike zero baseline");
 assert.ok(processedReturnSpike.qIonC > 0);
+
+const excludedReturnSpike = processTrace(comsolTrace, {
+  integrationMode: "return-spike",
+  baselineMode: "manual",
+  manualBaseline: 0,
+  integrationStart: NaN,
+  integrationEnd: NaN,
+  excludeSpikeUs: 100,
+  smoothData: false,
+  smoothWindow: 5,
+});
+assert.ok(excludedReturnSpike.integration.startIndex > processedReturnSpike.integration.startIndex);
+assert.ok(excludedReturnSpike.integration.startTime >= comsolTrace.raw[600].time + 100e-6);
 
 const broadPlateauNegativeSpike = `% Model\tplateau_return.mph
 % Time (s)\tTerminal current (A)
