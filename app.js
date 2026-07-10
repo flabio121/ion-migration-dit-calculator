@@ -12,7 +12,7 @@ import {
   runSensitivityAnalysis,
   summarize,
   thermalVoltageFromTemperature,
-} from "./calc.js?v=20260625-integration-presets";
+} from "./calc.js?v=20260625-interactive-plot-zoom";
 
 const state = {
   files: [],
@@ -25,6 +25,9 @@ const state = {
   validation: null,
   report: null,
   plotMode: "processed",
+  plotViews: { processed: null, raw: null },
+  plotTransform: null,
+  plotDrag: null,
 };
 
 const plotColors = ["#0e7c86", "#a23b72", "#2f6f3e", "#c05a28", "#4d5f9f", "#8a6b12", "#287cba", "#7b4ea3", "#3d776d", "#b3434a"];
@@ -69,6 +72,7 @@ const els = {
   pointCount: document.getElementById("pointCount"),
   biasCorrectionFactor: document.getElementById("biasCorrectionFactor"),
   ditChart: document.getElementById("ditChart"),
+  resetPlotZoom: document.getElementById("resetPlotZoom"),
   plotSummary: document.getElementById("plotSummary"),
   plotLegend: document.getElementById("plotLegend"),
   resultCards: document.getElementById("resultCards"),
@@ -480,6 +484,42 @@ function exportPng() {
   });
 }
 
+function resetPlotZoom() {
+  state.plotViews[state.plotMode] = null;
+  state.plotDrag = null;
+  drawPlot();
+}
+
+function canvasPoint(event) {
+  const rect = els.ditChart.getBoundingClientRect();
+  return {
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top,
+  };
+}
+
+function pointInsidePlot(point, transform = state.plotTransform) {
+  return Boolean(transform &&
+    point.x >= transform.margin.left &&
+    point.x <= transform.margin.left + transform.plotW &&
+    point.y >= transform.margin.top &&
+    point.y <= transform.margin.top + transform.plotH);
+}
+
+function clampPlotPoint(point, transform = state.plotTransform) {
+  return {
+    x: Math.min(transform.margin.left + transform.plotW, Math.max(transform.margin.left, point.x)),
+    y: Math.min(transform.margin.top + transform.plotH, Math.max(transform.margin.top, point.y)),
+  };
+}
+
+function plotValueAt(point, transform = state.plotTransform) {
+  return {
+    x: transform.minX + ((point.x - transform.margin.left) / transform.plotW) * (transform.maxX - transform.minX),
+    y: transform.maxY - ((point.y - transform.margin.top) / transform.plotH) * (transform.maxY - transform.minY),
+  };
+}
+
 function drawPlot() {
   const canvas = els.ditChart;
   const ctx = canvas.getContext("2d");
@@ -498,6 +538,8 @@ function drawPlot() {
     .map((points) => points.map((point) => ({ ...point, current: point.current * densityScale })));
   const nonEmpty = series.filter((points) => points.length > 0);
   if (!nonEmpty.length) {
+    state.plotTransform = null;
+    els.resetPlotZoom.disabled = true;
     ctx.fillStyle = "#66727f";
     ctx.font = "14px Segoe UI, Arial, sans-serif";
     ctx.textAlign = "center";
@@ -526,11 +568,19 @@ function drawPlot() {
   minY -= yPad;
   maxY += yPad;
 
+  const fullView = { minX, maxX, minY, maxY };
+  const savedView = state.plotViews[state.plotMode];
+  if (savedView) {
+    ({ minX, maxX, minY, maxY } = savedView);
+  }
+
   const margin = { top: 24, right: 26, bottom: 62, left: 88 };
   const plotW = cssWidth - margin.left - margin.right;
   const plotH = cssHeight - margin.top - margin.bottom;
   const x = (value) => margin.left + ((value - minX) / (maxX - minX)) * plotW;
   const y = (value) => margin.top + plotH - ((value - minY) / (maxY - minY)) * plotH;
+  state.plotTransform = { minX, maxX, minY, maxY, fullView, margin, plotW, plotH };
+  els.resetPlotZoom.disabled = !savedView;
 
   ctx.fillStyle = "#fbfcfd";
   ctx.fillRect(0, 0, cssWidth, cssHeight);
@@ -575,6 +625,11 @@ function drawPlot() {
   ctx.fillText(yLabel, 0, 0);
   ctx.restore();
 
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(margin.left, margin.top, plotW, plotH);
+  ctx.clip();
+
   if (els.showIntegrationRegion.checked && state.processedTraces[0]) {
     const first = state.processedTraces[0];
     const firstReturnSpikeTime = first.points[first.edges.returnSpikeIndex]?.time;
@@ -618,9 +673,22 @@ function drawPlot() {
     });
     ctx.stroke();
   });
+  ctx.restore();
+
+  if (state.plotDrag) {
+    const start = clampPlotPoint(state.plotDrag.start);
+    const current = clampPlotPoint(state.plotDrag.current);
+    ctx.fillStyle = "rgba(14, 124, 134, 0.14)";
+    ctx.fillRect(Math.min(start.x, current.x), Math.min(start.y, current.y), Math.abs(current.x - start.x), Math.abs(current.y - start.y));
+    ctx.strokeStyle = "#0e7c86";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 4]);
+    ctx.strokeRect(Math.min(start.x, current.x), Math.min(start.y, current.y), Math.abs(current.x - start.x), Math.abs(current.y - start.y));
+    ctx.setLineDash([]);
+  }
 
   const totalPoints = nonEmpty.reduce((sum, points) => sum + points.length, 0);
-  els.plotSummary.textContent = `${state.plotMode === "raw" ? "Raw" : "Processed"} DIT, ${nonEmpty.length} trace${nonEmpty.length === 1 ? "" : "s"}, ${totalPoints} points`;
+  els.plotSummary.textContent = `${state.plotMode === "raw" ? "Raw" : "Processed"} DIT, ${nonEmpty.length} trace${nonEmpty.length === 1 ? "" : "s"}, ${totalPoints} points${savedView ? ", zoomed" : ""}`;
   els.plotLegend.innerHTML = nonEmpty.map((_, index) => {
     const trace = state.processedTraces[index] || state.traces[index];
     const label = trace ? `${trace.fileName} / ${trace.deviceId}` : `Trace ${index + 1}`;
@@ -649,6 +717,7 @@ async function loadFiles(fileList) {
   const files = [...fileList].filter((file) => /\.(txt|csv|tsv)$/i.test(file.name) || file.type.startsWith("text/"));
   if (!files.length) throw new Error("Drop one or more .txt, .csv, or .tsv files.");
   state.validation = null;
+  state.plotViews = { processed: null, raw: null };
   state.files = await Promise.all(files.map(async (file) => ({ name: file.name, text: await file.text() })));
   els.fileName.textContent = state.files.length === 1 ? state.files[0].name : `${state.files.length} files selected`;
   state.parsedFiles = state.files.map((file) => parseData(file.text, file.name));
@@ -661,6 +730,7 @@ async function loadFiles(fileList) {
 function loadExperimentalSample() {
   const sample = generateExperimentalSample();
   state.validation = null;
+  state.plotViews = { processed: null, raw: null };
   state.files = [{ name: sample.fileName, text: sample.text }];
   els.fileName.textContent = sample.fileName;
   els.timeUnit.value = "us";
@@ -676,6 +746,7 @@ function loadExperimentalSample() {
 function loadSyntheticSample() {
   const sample = generateSyntheticSample();
   state.validation = { expectedQ: sample.expectedQ };
+  state.plotViews = { processed: null, raw: null };
   state.files = [{ name: sample.fileName, text: sample.text }];
   els.fileName.textContent = sample.fileName;
   els.timeUnit.value = sample.settings.timeUnit;
@@ -742,6 +813,67 @@ els.loadSyntheticSample.addEventListener("click", loadSyntheticSample);
 els.exportCsv.addEventListener("click", exportCsv);
 els.exportJson.addEventListener("click", exportJson);
 els.exportPng.addEventListener("click", exportPng);
+els.resetPlotZoom.addEventListener("click", resetPlotZoom);
+
+els.ditChart.addEventListener("pointerdown", (event) => {
+  const point = canvasPoint(event);
+  if (!pointInsidePlot(point)) return;
+  els.ditChart.setPointerCapture(event.pointerId);
+  state.plotDrag = { start: point, current: point };
+  els.ditChart.classList.add("zoom-dragging");
+  drawPlot();
+});
+
+els.ditChart.addEventListener("pointermove", (event) => {
+  if (!state.plotDrag) return;
+  state.plotDrag.current = canvasPoint(event);
+  drawPlot();
+});
+
+els.ditChart.addEventListener("pointerup", (event) => {
+  if (!state.plotDrag || !state.plotTransform) return;
+  const start = clampPlotPoint(state.plotDrag.start);
+  const end = clampPlotPoint(canvasPoint(event));
+  const width = Math.abs(end.x - start.x);
+  const height = Math.abs(end.y - start.y);
+  state.plotDrag = null;
+  els.ditChart.classList.remove("zoom-dragging");
+  if (width >= 8 && height >= 8) {
+    const first = plotValueAt({ x: Math.min(start.x, end.x), y: Math.max(start.y, end.y) });
+    const second = plotValueAt({ x: Math.max(start.x, end.x), y: Math.min(start.y, end.y) });
+    state.plotViews[state.plotMode] = {
+      minX: first.x,
+      maxX: second.x,
+      minY: first.y,
+      maxY: second.y,
+    };
+  }
+  drawPlot();
+});
+
+els.ditChart.addEventListener("pointercancel", () => {
+  state.plotDrag = null;
+  els.ditChart.classList.remove("zoom-dragging");
+  drawPlot();
+});
+
+els.ditChart.addEventListener("wheel", (event) => {
+  const point = canvasPoint(event);
+  if (!pointInsidePlot(point) || !state.plotTransform) return;
+  event.preventDefault();
+  const center = plotValueAt(point);
+  const factor = event.deltaY < 0 ? 0.8 : 1.25;
+  const { minX, maxX, minY, maxY } = state.plotTransform;
+  state.plotViews[state.plotMode] = {
+    minX: center.x - (center.x - minX) * factor,
+    maxX: center.x + (maxX - center.x) * factor,
+    minY: center.y - (center.y - minY) * factor,
+    maxY: center.y + (maxY - center.y) * factor,
+  };
+  drawPlot();
+}, { passive: false });
+
+els.ditChart.addEventListener("dblclick", resetPlotZoom);
 
 document.querySelectorAll(".plot-mode").forEach((button) => {
   button.addEventListener("click", () => {

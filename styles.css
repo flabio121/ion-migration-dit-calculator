@@ -365,6 +365,18 @@ label > select {
   width: 100%;
   height: 100%;
   display: block;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+#ditChart.zoom-dragging {
+  cursor: zoom-in;
+}
+
+#resetPlotZoom:disabled {
+  cursor: default;
+  opacity: 0.45;
 }
 
 .plot-mode.active,
