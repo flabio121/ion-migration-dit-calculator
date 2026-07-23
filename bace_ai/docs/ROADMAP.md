@@ -2,25 +2,36 @@
 
 ## Phase 0 — Requirements and source reconciliation
 
+Completed:
+
+- received the original `BACE keithley prog` archive
+- performed a non-executing static review of all three LabVIEW VIs
+- recorded hashes, visible subVI dependencies, likely acquisition pattern, and 2460 porting risks in `LEGACY_LABVIEW_REVIEW.md`
+- selected `transient_j_of_V_with_prebias_integratedC_v2a_fixedREAD.vi` as the primary legacy behavioral reference
+
 Inputs still needed:
 
-- original `BACE keithley prog.zip`
+- LabVIEW front-panel screenshots or export for the `fixedREAD` VI
+- complete block-diagram screenshots or export, including every case and sequence frame
+- exact LabVIEW and Keithley 24XX driver versions
+- any missing custom subVIs and delimited recipe/calibration files
 - current local Keithley 2460 GUI source, if it differs from `MultiplexSolarSim`
 - device wiring and polarity diagram
-- approved device voltage/current limits
+- approved device voltage/current/time limits
 - device areas and absorber thicknesses
-- Keithley firmware version and connection mode
+- Keithley 2460 firmware version and connection mode
 - relay model and channel mapping
 - example raw BACE files and expected results
 
 Deliverables:
 
-- command crosswalk from the original program to the new adapter
+- command and behavior crosswalk from the original program to the new adapter
 - verified sign convention
 - lab-approved safety policy
 - reference BACE recipe and expected transient regions
+- accepted legacy trace with a manually verified charge result
 
-Exit gate: no physical-device testing until the wiring, sign convention, and limits are documented.
+Exit gate: no physical-device testing until the wiring, sign convention, limits, and legacy sequence are documented.
 
 ## Phase 1 — Simulation and offline analysis
 
