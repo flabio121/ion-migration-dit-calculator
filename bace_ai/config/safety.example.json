@@ -1,0 +1,18 @@
+{
+  "hardware_enabled": false,
+  "max_abs_voltage_v": 1.5,
+  "max_voltage_step_v": 1.5,
+  "max_current_compliance_a": 0.01,
+  "max_precondition_duration_s": 120.0,
+  "max_capture_duration_s": 60.0,
+  "min_sample_interval_s": 0.0005,
+  "max_sample_interval_s": 1.0,
+  "max_points": 100000,
+  "max_repetitions": 10,
+  "min_rest_duration_s": 1.0,
+  "min_area_cm2": 0.0001,
+  "max_area_cm2": 10.0,
+  "min_thickness_nm": 50.0,
+  "max_thickness_nm": 5000.0,
+  "allowed_pixels": []
+}

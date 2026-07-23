@@ -1,0 +1,33 @@
+name: BACE AI scaffold tests
+
+on:
+  pull_request:
+    paths:
+      - "bace_ai/**"
+      - ".github/workflows/bace-ai-tests.yml"
+  push:
+    branches:
+      - "agent/bace-ai-lab-controller"
+    paths:
+      - "bace_ai/**"
+      - ".github/workflows/bace-ai-tests.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bace_ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: bace_ai/pyproject.toml
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+      - name: Test
+        run: pytest
+      - name: Runtime-critical lint
+        run: ruff check src tests examples --select E9,F63,F7,F82
