@@ -21,6 +21,12 @@ def _validate_record(record: TransientRecord) -> tuple[np.ndarray, np.ndarray]:
     return time_s, current_a
 
 
+def _integrate_trapezoid(y: np.ndarray, x: np.ndarray) -> float:
+    if hasattr(np, "trapezoid"):
+        return float(np.trapezoid(y, x))
+    return float(np.trapz(y, x))
+
+
 def analyze_transient(record: TransientRecord, recipe: BaceRecipe) -> AnalysisResult:
     time_s, current_a = _validate_record(record)
 
@@ -32,7 +38,7 @@ def analyze_transient(record: TransientRecord, recipe: BaceRecipe) -> AnalysisRe
     start_index = min(max(start_index, 0), time_s.size - 2)
     integration_time = time_s[start_index:]
     integration_current = ionic_current_a[start_index:]
-    extracted_charge_c = float(np.trapz(integration_current, integration_time))
+    extracted_charge_c = _integrate_trapezoid(integration_current, integration_time)
 
     initial_window = max(1, min(5, integration_current.size))
     initial_ionic_current_a = float(np.median(integration_current[:initial_window]))
